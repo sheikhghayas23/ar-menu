@@ -1,118 +1,103 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8">
-  <title>AR Menu Demo</title>
+<meta charset="UTF-8">
+<title>AR Restaurant Menu</title>
 
-  <!-- A-Frame -->
-  <script src="https://aframe.io/releases/1.2.0/aframe.min.js"></script>
+<script src="https://aframe.io/releases/1.2.0/aframe.min.js"></script>
+<script src="https://raw.githack.com/AR-js-org/AR.js/master/aframe/build/aframe-ar.js"></script>
 
-  <!-- AR.js -->
-  <script src="https://raw.githack.com/AR-js-org/AR.js/master/aframe/build/aframe-ar.js"></script>
+<style>
+body { margin:0; overflow:hidden; font-family:Arial; }
 
-  <style>
-    body {
-      margin: 0;
-      overflow: hidden;
-      font-family: Arial, sans-serif;
-    }
+#menu {
+  position: fixed;
+  bottom: 15px;
+  left: 50%;
+  transform: translateX(-50%);
+  background: rgba(0,0,0,0.75);
+  padding: 10px;
+  border-radius: 16px;
+  display: flex;
+  gap: 8px;
+  z-index: 10;
+}
 
-    #ui {
-      position: fixed;
-      bottom: 20px;
-      left: 50%;
-      transform: translateX(-50%);
-      background: rgba(0,0,0,0.7);
-      padding: 12px;
-      border-radius: 16px;
-      display: flex;
-      gap: 10px;
-      z-index: 10;
-    }
-
-    button {
-      border: none;
-      padding: 10px 14px;
-      border-radius: 12px;
-      background: #ff4d4d;
-      color: white;
-      font-size: 14px;
-      cursor: pointer;
-    }
-
-    button:hover {
-      background: #ff2e2e;
-    }
-  </style>
+button {
+  background:#ff4d4d;
+  border:none;
+  color:white;
+  padding:8px 12px;
+  border-radius:12px;
+  font-size:13px;
+  cursor:pointer;
+}
+button:hover { background:#ff2e2e; }
+</style>
 </head>
 
 <body>
 
-  <!-- UI BUTTONS -->
-  <div id="ui">
-    <button onclick="showPizza()">Pizza</button>
-    <button onclick="showBurger()">Burger</button>
-  </div>
-<!-- test commit -->
-  <!-- AR SCENE -->
-  <a-scene
-    embedded
-    arjs="sourceType: webcam; debugUIEnabled: false;"
-    vr-mode-ui="enabled: false">
+<!-- CAROUSEL -->
+<div id="menu">
+  <button onclick="dish(0)">🍕</button>
+  <button onclick="dish(1)">🍝</button>
+  <button onclick="dish(2)">🥗</button>
+  <button onclick="dish(3)">🌮</button>
+  <button onclick="dish(4)">🌯</button>
+  <button onclick="dish(5)">🍛</button>
+  <button onclick="dish(6)">🍗</button>
+  <button onclick="dish(7)">🥘</button>
+  <button onclick="dish(8)">🍢</button>
+  <button onclick="dish(9)">🥙</button>
+</div>
 
-    <!-- MARKER -->
-    <a-marker preset="hiro">
+<a-scene embedded arjs="debugUIEnabled:false" vr-mode-ui="enabled:false">
 
-      <!-- DISH IMAGE -->
-      <a-image
-        id="dish"
-        src="https://upload.wikimedia.org/wikipedia/commons/d/d3/Supreme_pizza.jpg"
-        rotation="-90 0 0"
-        width="1"
-        height="1">
-      </a-image>
+<a-marker preset="hiro">
 
-      <!-- TEXT -->
-      <a-text
-        id="label"
-        value="Pizza • 12 inches"
-        rotation="-90 0 0"
-        position="0 0.1 0"
-        align="center"
-        color="red">
-      </a-text>
+<a-image id="food"
+rotation="-90 0 0"
+width="1"
+height="1"
+src="https://upload.wikimedia.org/wikipedia/commons/d/d3/Supreme_pizza.jpg">
+</a-image>
 
-    </a-marker>
+<a-text id="label"
+rotation="-90 0 0"
+position="0 0.1 0"
+align="center"
+color="red"
+value="Italian Pizza • 12 inches">
+</a-text>
 
-    <!-- CAMERA -->
-    <a-entity camera></a-entity>
+</a-marker>
 
-  </a-scene>
+<a-entity camera></a-entity>
+</a-scene>
 
-  <!-- JAVASCRIPT -->
-  <script>
-    function showPizza() {
-      document.getElementById("dish").setAttribute(
-        "src",
-        "https://thumbs.dreamstime.com/b/pizza-isolated-white-background-easy-to-remove-239708051.jpg"
-      );
-      document.getElementById("label").setAttribute(
-        "value",
-        "Pizza • 12 inches"
-      );
-    }
+<script>
+const dishes = [
+  {img:"https://www.thepioneerwoman.com/food-cooking/recipes/a36080074/classic-cheese-pizza/", text:"Italian Pizza • 12 inches"},
+  {img:"https://upload.wikimedia.org/wikipedia/commons/0/0b/Spaghetti_al_Pomodoro.JPG", text:"Italian Pasta"},
+  {img:"https://upload.wikimedia.org/wikipedia/commons/a/ac/Caprese_salad_%281%29.jpg", text:"Italian Caprese Salad"},
 
-    function showBurger() {
-      document.getElementById("dish").setAttribute(
-        "src",
-        "https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcSCXdTDfU0YK76lpHBlIoTSuQyXyII4Hykwvg&s"
-      );
-      document.getElementById("label").setAttribute(
-        "value",
-        "Burger • Single Patty"
-      );
-    }
-  </script>
+  {img:"https://upload.wikimedia.org/wikipedia/commons/0/0b/Tacos_de_carnitas.jpg", text:"Mexican Tacos"},
+  {img:"https://upload.wikimedia.org/wikipedia/commons/5/5c/Burrito.JPG", text:"Mexican Burrito"},
+
+  {img:"https://www.thespruceeats.com/chicken-biryani-recipe-7367850", text:"Desi Chicken Biryani"},
+  {img:"https://upload.wikimedia.org/wikipedia/commons/5/5f/Butter_Chicken.jpg", text:"Desi Butter Chicken"},
+  {img:"https://upload.wikimedia.org/wikipedia/commons/2/25/Dal_Makhani.jpg", text:"Desi Dal Makhani"},
+  {img:"https://upload.wikimedia.org/wikipedia/commons/8/8c/Seekh_kebab.jpg", text:"Desi Seekh Kebab"},
+
+  {img:"https://www.theguardian.com/food/2022/aug/17/how-to-make-the-perfect-chicken-shawarma-recipe-felicity-cloake", text:"Arabic Shawarma"}
+];
+
+function dish(i){
+  document.getElementById("food").setAttribute("src", dishes[i].img);
+  document.getElementById("label").setAttribute("value", dishes[i].text);
+}
+</script>
 
 </body>
 </html>
