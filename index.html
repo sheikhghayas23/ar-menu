@@ -2,101 +2,110 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<title>AR Restaurant Menu</title>
+<title>AR Smart Menu</title>
 
-<script src="https://aframe.io/releases/1.2.0/aframe.min.js"></script>
+<!-- A-Frame + AR.js -->
+<script src="https://aframe.io/releases/1.4.2/aframe.min.js"></script>
 <script src="https://raw.githack.com/AR-js-org/AR.js/master/aframe/build/aframe-ar.js"></script>
 
 <style>
-body { margin:0; overflow:hidden; font-family:Arial; }
-
-#menu {
+body { margin:0; overflow:hidden; font-family: Arial, sans-serif; }
+#panel {
   position: fixed;
-  bottom: 15px;
-  left: 50%;
-  transform: translateX(-50%);
-  background: rgba(0,0,0,0.75);
-  padding: 10px;
-  border-radius: 16px;
+  bottom: 0;
+  width: 100%;
+  background: rgba(0,0,0,0.85);
+  color: white;
+  padding: 12px;
+}
+#title { font-size: 18px; font-weight: bold; }
+#meta { font-size: 14px; margin-top: 4px; }
+#controls {
+  margin-top: 10px;
   display: flex;
-  gap: 8px;
-  z-index: 10;
+  justify-content: space-between;
 }
-
 button {
-  background:#ff4d4d;
-  border:none;
-  color:white;
-  padding:8px 12px;
-  border-radius:12px;
-  font-size:13px;
-  cursor:pointer;
+  background: #ffb300;
+  border: none;
+  padding: 10px 16px;
+  border-radius: 10px;
+  font-weight: bold;
 }
-button:hover { background:#ff2e2e; }
+.tag {
+  background: #2ecc71;
+  padding: 2px 8px;
+  border-radius: 6px;
+  font-size: 12px;
+}
 </style>
 </head>
 
 <body>
 
-<!-- CAROUSEL -->
-<div id="menu">
-  <button onclick="dish(0)">🍕</button>
-  <button onclick="dish(1)">🍝</button>
-  <button onclick="dish(2)">🥗</button>
-  <button onclick="dish(3)">🌮</button>
-  <button onclick="dish(4)">🌯</button>
-  <button onclick="dish(5)">🍛</button>
-  <button onclick="dish(6)">🍗</button>
-  <button onclick="dish(7)">🥘</button>
-  <button onclick="dish(8)">🍢</button>
-  <button onclick="dish(9)">🥙</button>
-</div>
+<a-scene embedded arjs="sourceType: webcam; debugUIEnabled:false;">
+  <a-assets>
+    <!-- REPLACE WITH YOUR IMAGES -->
+    <img id="d1" src="pizza.jpg">
+    <img id="d2" src="pasta.jpg">
+    <img id="d3" src="lasagna.jpg">
 
-<a-scene embedded arjs="debugUIEnabled:false" vr-mode-ui="enabled:false">
+    <img id="d4" src="taco.jpg">
+    <img id="d5" src="burrito.jpg">
 
-<a-marker preset="hiro">
+    <img id="d6" src="biryani.jpg">
+    <img id="d7" src="karahi.jpg">
+    <img id="d8" src="naan.jpg">
+    <img id="d9" src="samosa.jpg">
 
-<a-image id="food"
-rotation="-90 0 0"
-width="1"
-height="1"
-src="https://upload.wikimedia.org/wikipedia/commons/d/d3/Supreme_pizza.jpg">
-</a-image>
+    <img id="d10" src="shawarma.jpg">
+  </a-assets>
 
-<a-text id="label"
-rotation="-90 0 0"
-position="0 0.1 0"
-align="center"
-color="red"
-value="Italian Pizza • 12 inches">
-</a-text>
+  <a-marker preset="hiro">
+    <a-image
+      id="dish"
+      src="#d1"
+      rotation="-90 0 0"
+      position="0 0 0"
+      width="1.2"
+      height="1.2">
+    </a-image>
+  </a-marker>
 
-</a-marker>
-
-<a-entity camera></a-entity>
+  <a-entity camera></a-entity>
 </a-scene>
 
+<div id="panel">
+  <div id="title">Pizza Margherita <span class="tag">Popular</span></div>
+  <div id="meta">Italian • $12 • Serves 1</div>
+  <div id="controls">
+    <button onclick="prev()">◀</button>
+    <button onclick="next()">▶</button>
+  </div>
+</div>
+
 <script>
-const dishes = [
-  {img:"https://www.thepioneerwoman.com/food-cooking/recipes/a36080074/classic-cheese-pizza/", text:"Italian Pizza • 12 inches"},
-  {img:"https://upload.wikimedia.org/wikipedia/commons/0/0b/Spaghetti_al_Pomodoro.JPG", text:"Italian Pasta"},
-  {img:"https://upload.wikimedia.org/wikipedia/commons/a/ac/Caprese_salad_%281%29.jpg", text:"Italian Caprese Salad"},
-
-  {img:"https://upload.wikimedia.org/wikipedia/commons/0/0b/Tacos_de_carnitas.jpg", text:"Mexican Tacos"},
-  {img:"https://upload.wikimedia.org/wikipedia/commons/5/5c/Burrito.JPG", text:"Mexican Burrito"},
-
-  {img:"https://www.thespruceeats.com/chicken-biryani-recipe-7367850", text:"Desi Chicken Biryani"},
-  {img:"https://upload.wikimedia.org/wikipedia/commons/5/5f/Butter_Chicken.jpg", text:"Desi Butter Chicken"},
-  {img:"https://upload.wikimedia.org/wikipedia/commons/2/25/Dal_Makhani.jpg", text:"Desi Dal Makhani"},
-  {img:"https://upload.wikimedia.org/wikipedia/commons/8/8c/Seekh_kebab.jpg", text:"Desi Seekh Kebab"},
-
-  {img:"https://www.theguardian.com/food/2022/aug/17/how-to-make-the-perfect-chicken-shawarma-recipe-felicity-cloake", text:"Arabic Shawarma"}
+const menu = [
+ {img:"#d1", title:"Pizza Margherita", meta:"Italian • $12 • Serves 1"},
+ {img:"#d2", title:"Creamy Pasta", meta:"Italian • $11 • Serves 1"},
+ {img:"#d3", title:"Lasagna", meta:"Italian • $14 • Serves 2"},
+ {img:"#d4", title:"Beef Taco", meta:"Mexican • $9 • Serves 1"},
+ {img:"#d5", title:"Chicken Burrito", meta:"Mexican • $10 • Serves 1"},
+ {img:"#d6", title:"Chicken Biryani", meta:"Desi • $15 • Serves 2"},
+ {img:"#d7", title:"Karahi", meta:"Desi • $18 • Serves 2"},
+ {img:"#d8", title:"Butter Naan", meta:"Desi • $4 • Side"},
+ {img:"#d9", title:"Samosa Plate", meta:"Desi • $6 • Snack"},
+ {img:"#d10", title:"Shawarma", meta:"Arabic • $10 • Serves 1"}
 ];
 
-function dish(i){
-  document.getElementById("food").setAttribute("src", dishes[i].img);
-  document.getElementById("label").setAttribute("value", dishes[i].text);
+let i = 0;
+function update() {
+ document.getElementById("dish").setAttribute("src", menu[i].img);
+ document.getElementById("title").innerText = menu[i].title;
+ document.getElementById("meta").innerText = menu[i].meta;
 }
+function next(){ i=(i+1)%menu.length; update(); }
+function prev(){ i=(i-1+menu.length)%menu.length; update(); }
 </script>
 
 </body>
