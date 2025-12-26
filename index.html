@@ -1,131 +1,119 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8">
-  <title>Pro AR Menu</title>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>Smart AR Menu</title>
 
-  <!-- A-Frame + AR.js -->
-  <script src="https://aframe.io/releases/1.4.2/aframe.min.js"></script>
-  <script src="https://raw.githack.com/AR-js-org/AR.js/master/aframe/build/aframe-ar.js"></script>
+<style>
+  body {
+    margin: 0;
+    overflow: hidden;
+    font-family: system-ui, -apple-system, BlinkMacSystemFont;
+    background: black;
+  }
 
-  <style>
-    body { margin: 0; overflow: hidden; font-family: system-ui; }
+  /* Camera video */
+  video {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100vw;
+    height: 100vh;
+    object-fit: cover;
+    z-index: 1;
+  }
 
-    #ui {
-      position: fixed;
-      bottom: 0;
-      width: 100%;
-      background: rgba(0,0,0,0.75);
-      color: white;
-      padding: 12px;
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-    }
+  /* Dish overlay */
+  #dish {
+    position: fixed;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    width: 260px;
+    max-width: 70vw;
+    z-index: 2;
+    transition: opacity 0.3s ease, transform 0.3s ease;
+  }
 
-    #info {
-      font-size: 14px;
-      line-height: 1.4;
-    }
+  /* UI panel */
+  #ui {
+    position: fixed;
+    bottom: 0;
+    width: 100%;
+    background: rgba(0,0,0,0.7);
+    padding: 14px;
+    display: flex;
+    justify-content: center;
+    gap: 14px;
+    z-index: 3;
+  }
 
-    button {
-      background: #ffb300;
-      border: none;
-      padding: 10px 14px;
-      border-radius: 10px;
-      font-weight: bold;
-      cursor: pointer;
-    }
-  </style>
+  button {
+    padding: 12px 18px;
+    border-radius: 12px;
+    border: none;
+    font-size: 16px;
+    font-weight: 600;
+    cursor: pointer;
+    background: #ffb703;
+  }
+
+  button:hover {
+    background: #ffd166;
+  }
+</style>
 </head>
 
 <body>
 
-<a-scene
-  embedded
-  arjs="sourceType: webcam; debugUIEnabled: false;"
-  renderer="antialias: true"
->
-  <a-assets>
-    <!-- Replace with your food images -->
-    <img id="italian1" src="pizza.jpg">
-    <img id="desi1" src="biryani.jpg">
-    <img id="arab1" src="shawarma.jpg">
-  </a-assets>
+<!-- Camera -->
+<video id="camera" autoplay playsinline></video>
 
-  <a-marker preset="hiro">
-
-    <!-- Shadow -->
-    <a-circle
-      radius="0.6"
-      color="#000"
-      opacity="0.3"
-      rotation="-90 0 0"
-      position="0 0.01 0">
-    </a-circle>
-
-    <!-- Dish -->
-    <a-image
-      id="dish"
-      src="#italian1"
-      width="1"
-      height="1"
-      rotation="-90 0 0"
-      position="0 0.05 0"
-      animation="property: rotation; to: -90 360 0; loop: true; dur: 12000"
-    ></a-image>
-
-    <!-- Floating Label -->
-    <a-text
-      id="label"
-      value="Pizza | $12 | Serves 1"
-      align="center"
-      position="0 0.6 0"
-      color="#fff"
-      scale="1 1 1">
-    </a-text>
-
-  </a-marker>
-
-  <a-entity camera></a-entity>
-</a-scene>
+<!-- Dish Image -->
+<img
+  id="dish"
+  src="https://images.unsplash.com/photo-1550547660-d9450f859349?w=800"
+  alt="Dish"
+/>
 
 <!-- UI -->
 <div id="ui">
-  <div id="info">
-    🍕 <b>Pizza</b><br>
-    Italian • $12<br>
-    Thin crust cheese pizza
-  </div>
-  <button onclick="nextDish()">Next</button>
+  <button onclick="showBurger()">🍔 Burger</button>
+  <button onclick="showPizza()">🍕 Pizza</button>
 </div>
 
 <script>
-  const dishes = [
-    {
-      img: "#italian1",
-      label: "Pizza | $12 | Serves 1",
-      info: "🍕 <b>Pizza</b><br>Italian • $12<br>Thin crust cheese pizza"
-    },
-    {
-      img: "#desi1",
-      label: "Biryani | $15 | Serves 2",
-      info: "🍛 <b>Biryani</b><br>Desi • $15<br>Spiced rice with chicken"
-    },
-    {
-      img: "#arab1",
-      label: "Shawarma | $10 | Serves 1",
-      info: "🥙 <b>Shawarma</b><br>Arabic • $10<br>Grilled wrap with sauce"
-    }
-  ];
+  // Start camera
+  const video = document.getElementById("camera");
 
-  let i = 0;
+  navigator.mediaDevices.getUserMedia({
+    video: { facingMode: "environment" },
+    audio: false
+  })
+  .then(stream => {
+    video.srcObject = stream;
+  })
+  .catch(err => {
+    alert("Camera access denied");
+  });
 
-  function nextDish() {
-    i = (i + 1) % dishes.length;
-    document.getElementById("dish").setAttribute("src", dishes[i].img);
-    document.getElementById("label").setAttribute("value", dishes[i].label);
-    document.getElementById("info").innerHTML = dishes[i].info;
+  const dish = document.getElementById("dish");
+
+  function fadeSwap(src) {
+    dish.style.opacity = "0";
+    setTimeout(() => {
+      dish.src = src;
+      dish.style.opacity = "1";
+    }, 200);
+  }
+
+  function showBurger() {
+    fadeSwap("https://images.unsplash.com/photo-1550547660-d9450f859349?w=800");
+  }
+
+  function showPizza() {
+    fadeSwap("https://images.unsplash.com/photo-1548365328-9f547fb095c8?w=800");
   }
 </script>
 
