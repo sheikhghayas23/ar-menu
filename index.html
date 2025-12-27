@@ -1,190 +1,117 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-<meta charset="UTF-8" />
-<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-<title>Smart AR Menu</title>
+<meta charset="utf-8">
+<title>Free Sticky AR Menu</title>
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
 
 <style>
-  body {
-    margin: 0;
-    overflow: hidden;
-    font-family: system-ui, -apple-system;
-    background: black;
-  }
-
-  /* Camera */
-  video {
-    position: fixed;
-    inset: 0;
-    width: 100vw;
-    height: 100vh;
-    object-fit: cover;
-    z-index: 1;
-  }
-
-  /* Dish */
-  #dish {
-    position: fixed;
-    top: 50%;
-    left: 50%;
-    width: 260px;
-    max-width: 70vw;
-    transform: translate(-50%, -50%);
-    z-index: 2;
-    transition: opacity 0.3s ease, transform 0.2s ease;
-    pointer-events: none;
-  }
-
-  /* Bottom panel */
-  #panel {
+  body { margin: 0; overflow: hidden; background: black; }
+  #ui {
     position: fixed;
     bottom: 0;
     width: 100%;
-    background: rgba(0,0,0,0.7);
-    padding: 12px 0;
-    z-index: 3;
-  }
-
-  /* Carousel */
-  .carousel {
+    padding: 14px;
     display: flex;
+    justify-content: center;
     gap: 12px;
-    overflow-x: auto;
-    padding: 0 16px;
-    scrollbar-width: none;
+    background: rgba(0,0,0,0.7);
+    z-index: 10;
   }
-
-  .carousel::-webkit-scrollbar {
-    display: none;
-  }
-
-  .item {
-    min-width: 120px;
-    background: rgba(255,255,255,0.1);
-    color: white;
-    border-radius: 14px;
-    padding: 10px;
-    text-align: center;
-    font-size: 14px;
-    cursor: pointer;
-    backdrop-filter: blur(6px);
-    transition: transform 0.2s ease, background 0.2s ease;
-  }
-
-  .item:hover {
-    transform: scale(1.05);
-    background: rgba(255,255,255,0.2);
-  }
-
-  .title {
+  button {
+    padding: 12px 18px;
+    border-radius: 12px;
+    border: none;
+    font-size: 16px;
     font-weight: 600;
-    margin-bottom: 4px;
-  }
-
-  .section {
-    color: #ffb703;
-    font-weight: 700;
-    margin: 10px 16px 6px;
+    background: #ffb703;
   }
 </style>
 </head>
 
 <body>
 
-<video id="camera" autoplay playsinline></video>
-
-<img id="dish" src="https://images.unsplash.com/photo-1550547660-d9450f859349?w=800" />
-
-<!-- MENU PANEL -->
-<div id="panel">
-
-  <div class="section">🍛 Desi</div>
-  <div class="carousel">
-    <div class="item" onclick="showDish(biryani)">
-      <div class="title">Biryani</div>
-      Rs / $$
-    </div>
-    <div class="item" onclick="showDish(korma)">
-      <div class="title">Chicken Korma</div>
-    </div>
-    <div class="item" onclick="showDish(butter)">
-      <div class="title">Butter Chicken</div>
-    </div>
-    <div class="item" onclick="showDish(curry)">
-      <div class="title">Chicken Curry</div>
-    </div>
-  </div>
-
-  <div class="section">🍝 Italian</div>
-  <div class="carousel">
-    <div class="item" onclick="showDish(pizza)">
-      <div class="title">Pizza</div>
-    </div>
-    <div class="item" onclick="showDish(lasagna)">
-      <div class="title">Lasagna</div>
-    </div>
-    <div class="item" onclick="showDish(eggplant)">
-      <div class="title">Eggplant Parm</div>
-    </div>
-  </div>
-
-  <div class="section">🌮 Mexican</div>
-  <div class="carousel">
-    <div class="item" onclick="showDish(taco)">
-      <div class="title">Tacos</div>
-    </div>
-    <div class="item" onclick="showDish(burrito)">
-      <div class="title">Burrito</div>
-    </div>
-    <div class="item" onclick="showDish(quesadilla)">
-      <div class="title">Quesadilla</div>
-    </div>
-  </div>
-
+<div id="ui">
+  <button id="pizza">🍕 Pizza</button>
+  <button id="burger">🍔 Burger</button>
 </div>
 
-<script>
-/* CAMERA */
-navigator.mediaDevices.getUserMedia({
-  video: { facingMode: "environment" },
-  audio: false
-}).then(stream => {
-  camera.srcObject = stream;
-});
+<script type="module">
+import * as THREE from "https://cdn.jsdelivr.net/npm/three@0.152/build/three.module.js";
+import { ARButton } from "https://cdn.jsdelivr.net/npm/three@0.152/examples/jsm/webxr/ARButton.js";
 
-/* DISH IMAGES */
-const pizza = "https://images.unsplash.com/photo-1565299624946-b28f40a0ae38?w=600&auto=format&fit=crop&q=60&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxzZWFyY2h8NHx8UGl6emF8ZW58MHx8MHx8fDA%3D";
-const biryani = "https://plus.unsplash.com/premium_photo-1694141252774-c937d97641da?w=600&auto=format&fit=crop&q=60&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxzZWFyY2h8MXx8QmlyeWFuaXxlbnwwfHwwfHx8MA%3D%3D";
-const korma = "https://media.istockphoto.com/id/486741528/photo/chicken-korma.webp?a=1&b=1&s=612x612&w=0&k=20&c=4Y3brhkA14Xr1B1ch9jh6IYmqRSdsjXLaelYFDBHqWU=";
-const butter = "https://plus.unsplash.com/premium_photo-1661419883163-bb4df1c10109?w=600&auto=format&fit=crop&q=60&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxzZWFyY2h8MXx8YnV0dGVyJTIwY2hpY2tlbnxlbnwwfHwwfHx8MA%3D%3D";
-const curry = "https://plus.unsplash.com/premium_photo-1723708871094-2c02cf5f5394?w=600&auto=format&fit=crop&q=60&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxzZWFyY2h8MXx8Y2hpY2tlbiUyMGN1cnJ5fGVufDB8fDB8fHww";
+let camera, scene, renderer;
+let controller;
+let reticle;
+let currentImage;
 
-const lasagna = " https://images.unsplash.com/photo-1574894709920-11b28e7367e3?w=600&auto=format&fit=crop&q=60&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxzZWFyY2h8M3x8TGFzYWduYXxlbnwwfHwwfHx8MA%3D%3D";
-const eggplant = "https://plus.unsplash.com/premium_photo-1712762300153-90261e84e576?w=600&auto=format&fit=crop&q=60&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxzZWFyY2h8MXx8ZWdncGxhbnQlMjBQYXJtZXNhbnxlbnwwfHwwfHx8MA%3D%3D ";
+init();
+function init() {
+  scene = new THREE.Scene();
+  camera = new THREE.PerspectiveCamera();
 
-const taco = "https://images.unsplash.com/photo-1565299585323-38d6b0865b47?w=600&auto=format&fit=crop&q=60&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxzZWFyY2h8Mnx8VGFjb3xlbnwwfHwwfHx8MA%3D%3D";
-const burrito = "https://images.unsplash.com/photo-1626700051175-6818013e1d4f?w=600&auto=format&fit=crop&q=60&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxzZWFyY2h8Mnx8QnVycml0b3N8ZW58MHx8MHx8fDA%3D";
-const quesadilla = "https://images.unsplash.com/photo-1613789397073-b5547585e25c?w=600&auto=format&fit=crop&q=60&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxzZWFyY2h8Nnx8Y2hpY2tlbiUyMHF1ZXNhZGlsbGF8ZW58MHx8MHx8fDA%3D  ";
+  renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
+  renderer.setSize(window.innerWidth, window.innerHeight);
+  renderer.xr.enabled = true;
+  document.body.appendChild(renderer.domElement);
 
-/* SWITCH DISH */
-function showDish(src) {
-  dish.style.opacity = "0";
-  dish.style.transform = "translate(-50%, -50%) scale(0.95)";
-  setTimeout(() => {
-    dish.src = src;
-    dish.style.opacity = "1";
-    dish.style.transform = "translate(-50%, -50%) scale(1)";
-  }, 200);
+  document.body.appendChild(
+    ARButton.createButton(renderer, {
+      requiredFeatures: ["hit-test"]
+    })
+  );
+
+  const light = new THREE.HemisphereLight(0xffffff, 0xbbbbff, 1);
+  scene.add(light);
+
+  controller = renderer.xr.getController(0);
+  controller.addEventListener("select", placeObject);
+  scene.add(controller);
+
+  const ringGeo = new THREE.RingGeometry(0.1, 0.15, 32).rotateX(-Math.PI / 2);
+  const ringMat = new THREE.MeshBasicMaterial({ color: 0x00ff00 });
+  reticle = new THREE.Mesh(ringGeo, ringMat);
+  reticle.visible = false;
+  scene.add(reticle);
+
+  renderer.setAnimationLoop(render);
 }
 
-/* FAKE ANCHOR EFFECT */
-window.addEventListener("deviceorientation", e => {
-  const x = e.gamma || 0;
-  const y = e.beta || 0;
-  dish.style.transform =
-    `translate(${ -50 + x * 0.05 }%, ${ -50 + y * 0.05 }%)`;
-});
+function placeObject() {
+  if (!reticle.visible || !currentImage) return;
+
+  const tex = new THREE.TextureLoader().load(currentImage);
+  const mat = new THREE.MeshBasicMaterial({ map: tex, transparent: true });
+  const geo = new THREE.PlaneGeometry(0.3, 0.3);
+  const mesh = new THREE.Mesh(geo, mat);
+  mesh.position.setFromMatrixPosition(reticle.matrix);
+  mesh.rotation.x = -Math.PI / 2;
+  scene.add(mesh);
+}
+
+function render(timestamp, frame) {
+  if (frame) {
+    const refSpace = renderer.xr.getReferenceSpace();
+    const session = renderer.xr.getSession();
+    session.requestHitTestSource({ space: session.viewerSpace }).then(source => {
+      const hits = frame.getHitTestResults(source);
+      if (hits.length) {
+        const pose = hits[0].getPose(refSpace);
+        reticle.visible = true;
+        reticle.matrix.fromArray(pose.transform.matrix);
+      } else {
+        reticle.visible = false;
+      }
+    });
+  }
+  renderer.render(scene, camera);
+}
+
+pizza.onclick = () => currentImage =
+  "https://images.unsplash.com/photo-1548365328-9f547fb095c8?w=800";
+
+burger.onclick = () => currentImage =
+  "https://images.unsplash.com/photo-1550547660-d9450f859349?w=800";
 </script>
 
 </body>
