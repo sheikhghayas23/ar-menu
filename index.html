@@ -1,117 +1,209 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-<meta charset="utf-8">
-<title>Free Sticky AR Menu</title>
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>Smart AR Menu</title>
 
 <style>
-  body { margin: 0; overflow: hidden; background: black; }
-  #ui {
+  body {
+    margin: 0;
+    overflow: hidden;
+    font-family: system-ui, -apple-system, BlinkMacSystemFont;
+    background: black;
+  }
+
+  video {
+    position: fixed;
+    inset: 0;
+    width: 100vw;
+    height: 100vh;
+    object-fit: cover;
+    z-index: 1;
+  }
+
+  #dish {
+    position: fixed;
+    width: 260px;
+    max-width: 70vw;
+    left: 50%;
+    top: 50%;
+    transform: translate(-50%, -50%);
+    z-index: 2;
+    pointer-events: none;
+    transition: opacity 0.25s ease, transform 0.2s ease;
+  }
+
+  #reticle {
+    position: fixed;
+    width: 36px;
+    height: 36px;
+    border: 2px solid #00ffcc;
+    border-radius: 50%;
+    left: 50%;
+    top: 50%;
+    transform: translate(-50%, -50%);
+    z-index: 2;
+    pointer-events: none;
+    opacity: 0.85;
+  }
+
+  #label {
+    position: fixed;
+    background: rgba(0,0,0,0.65);
+    color: #fff;
+    font-size: 13px;
+    padding: 6px 10px;
+    border-radius: 8px;
+    z-index: 2;
+    opacity: 0;
+    transition: opacity 0.3s ease;
+  }
+
+  #panel {
     position: fixed;
     bottom: 0;
     width: 100%;
-    padding: 14px;
-    display: flex;
-    justify-content: center;
-    gap: 12px;
-    background: rgba(0,0,0,0.7);
-    z-index: 10;
+    background: rgba(0,0,0,0.75);
+    padding: 10px 0 14px;
+    z-index: 3;
   }
-  button {
-    padding: 12px 18px;
-    border-radius: 12px;
-    border: none;
-    font-size: 16px;
+
+  .section {
+    color: #ffb703;
+    font-weight: 700;
+    margin: 10px 16px 6px;
+  }
+
+  .carousel {
+    display: flex;
+    gap: 12px;
+    overflow-x: auto;
+    padding: 0 16px;
+    scrollbar-width: none;
+  }
+
+  .carousel::-webkit-scrollbar { display: none; }
+
+  .item {
+    min-width: 120px;
+    background: rgba(255,255,255,0.12);
+    color: white;
+    border-radius: 14px;
+    padding: 10px;
+    text-align: center;
+    font-size: 14px;
+    cursor: pointer;
+    backdrop-filter: blur(6px);
+    transition: transform 0.2s ease, background 0.2s ease;
+  }
+
+  .item:hover {
+    transform: scale(1.05);
+    background: rgba(255,255,255,0.22);
+  }
+
+  .title {
     font-weight: 600;
-    background: #ffb703;
+    margin-bottom: 4px;
   }
 </style>
 </head>
 
 <body>
 
-<div id="ui">
-  <button id="pizza">🍕 Pizza</button>
-  <button id="burger">🍔 Burger</button>
+<video id="camera" autoplay playsinline></video>
+<img id="dish" />
+<div id="reticle"></div>
+<div id="label">12 inch • serves 1–2</div>
+
+<div id="panel">
+  <div class="section">🍛 Desi</div>
+  <div class="carousel">
+    <div class="item" onclick="showDish(biryani,'Large • serves 2')"><div class="title">Biryani</div></div>
+    <div class="item" onclick="showDish(korma,'Medium • serves 1–2')"><div class="title">Chicken Korma</div></div>
+    <div class="item" onclick="showDish(butter,'Medium • serves 1')"><div class="title">Butter Chicken</div></div>
+    <div class="item" onclick="showDish(curry,'Medium • serves 1')"><div class="title">Chicken Curry</div></div>
+  </div>
+
+  <div class="section">🍝 Italian</div>
+  <div class="carousel">
+    <div class="item" onclick="showDish(pizza,'12 inch • serves 1–2')"><div class="title">Pizza</div></div>
+    <div class="item" onclick="showDish(lasagna,'Tray • serves 2')"><div class="title">Lasagna</div></div>
+    <div class="item" onclick="showDish(eggplant,'Plate • serves 1')"><div class="title">Eggplant Parm</div></div>
+  </div>
+
+  <div class="section">🌮 Mexican</div>
+  <div class="carousel">
+    <div class="item" onclick="showDish(taco,'2 pcs • serves 1')"><div class="title">Tacos</div></div>
+    <div class="item" onclick="showDish(burrito,'Large • serves 1')"><div class="title">Burrito</div></div>
+    <div class="item" onclick="showDish(quesadilla,'Medium • serves 1–2')"><div class="title">Quesadilla</div></div>
+  </div>
 </div>
 
-<script type="module">
-import * as THREE from "https://cdn.jsdelivr.net/npm/three@0.152/build/three.module.js";
-import { ARButton } from "https://cdn.jsdelivr.net/npm/three@0.152/examples/jsm/webxr/ARButton.js";
+<script>
+/* CAMERA */
+navigator.mediaDevices.getUserMedia({
+  video: { facingMode: "environment" },
+  audio: false
+}).then(stream => camera.srcObject = stream);
 
-let camera, scene, renderer;
-let controller;
-let reticle;
-let currentImage;
+/* IMAGES */
+const pizza = "https://images.unsplash.com/photo-1565299624946-b28f40a0ae38?w=800";
+const biryani = "https://plus.unsplash.com/premium_photo-1694141252774-c937d97641da?w=800";
+const korma = "https://media.istockphoto.com/id/486741528/photo/chicken-korma.webp";
+const butter = "https://plus.unsplash.com/premium_photo-1661419883163-bb4df1c10109?w=800";
+const curry = "https://plus.unsplash.com/premium_photo-1723708871094-2c02cf5f5394?w=800";
+const lasagna = "https://images.unsplash.com/photo-1574894709920-11b28e7367e3?w=800";
+const eggplant = "https://plus.unsplash.com/premium_photo-1712762300153-90261e84e576?w=800";
+const taco = "https://images.unsplash.com/photo-1565299585323-38d6b0865b47?w=800";
+const burrito = "https://images.unsplash.com/photo-1626700051175-6818013e1d4f?w=800";
+const quesadilla = "https://images.unsplash.com/photo-1613789397073-b5547585e25c?w=800";
 
-init();
-function init() {
-  scene = new THREE.Scene();
-  camera = new THREE.PerspectiveCamera();
+/* STICKY STATE */
+let locked = false;
+let anchorX = 50, anchorY = 50;
+let liveX = 50, liveY = 50;
 
-  renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
-  renderer.setSize(window.innerWidth, window.innerHeight);
-  renderer.xr.enabled = true;
-  document.body.appendChild(renderer.domElement);
-
-  document.body.appendChild(
-    ARButton.createButton(renderer, {
-      requiredFeatures: ["hit-test"]
-    })
-  );
-
-  const light = new THREE.HemisphereLight(0xffffff, 0xbbbbff, 1);
-  scene.add(light);
-
-  controller = renderer.xr.getController(0);
-  controller.addEventListener("select", placeObject);
-  scene.add(controller);
-
-  const ringGeo = new THREE.RingGeometry(0.1, 0.15, 32).rotateX(-Math.PI / 2);
-  const ringMat = new THREE.MeshBasicMaterial({ color: 0x00ff00 });
-  reticle = new THREE.Mesh(ringGeo, ringMat);
-  reticle.visible = false;
-  scene.add(reticle);
-
-  renderer.setAnimationLoop(render);
+/* SHOW DISH */
+function showDish(src, text) {
+  dish.style.opacity = "0";
+  setTimeout(() => {
+    dish.src = src;
+    dish.style.opacity = "1";
+    label.textContent = text;
+    label.style.opacity = "1";
+  }, 150);
 }
 
-function placeObject() {
-  if (!reticle.visible || !currentImage) return;
-
-  const tex = new THREE.TextureLoader().load(currentImage);
-  const mat = new THREE.MeshBasicMaterial({ map: tex, transparent: true });
-  const geo = new THREE.PlaneGeometry(0.3, 0.3);
-  const mesh = new THREE.Mesh(geo, mat);
-  mesh.position.setFromMatrixPosition(reticle.matrix);
-  mesh.rotation.x = -Math.PI / 2;
-  scene.add(mesh);
-}
-
-function render(timestamp, frame) {
-  if (frame) {
-    const refSpace = renderer.xr.getReferenceSpace();
-    const session = renderer.xr.getSession();
-    session.requestHitTestSource({ space: session.viewerSpace }).then(source => {
-      const hits = frame.getHitTestResults(source);
-      if (hits.length) {
-        const pose = hits[0].getPose(refSpace);
-        reticle.visible = true;
-        reticle.matrix.fromArray(pose.transform.matrix);
-      } else {
-        reticle.visible = false;
-      }
-    });
+/* TAP TO LOCK */
+window.addEventListener("click", () => {
+  if (!locked) {
+    locked = true;
+    anchorX = liveX;
+    anchorY = liveY;
+    reticle.style.display = "none";
   }
-  renderer.render(scene, camera);
-}
+});
 
-pizza.onclick = () => currentImage =
-  "https://images.unsplash.com/photo-1548365328-9f547fb095c8?w=800";
+/* MEASURE-LIKE MOTION */
+window.addEventListener("deviceorientation", e => {
+  if (locked) return;
+  const x = e.gamma || 0;
+  const y = e.beta || 0;
+  liveX = 50 + x * 0.04;
+  liveY = 50 + y * 0.04;
+});
 
-burger.onclick = () => currentImage =
-  "https://images.unsplash.com/photo-1550547660-d9450f859349?w=800";
+/* APPLY POSITION */
+setInterval(() => {
+  const x = locked ? anchorX : liveX;
+  const y = locked ? anchorY : liveY;
+  dish.style.left = x + "%";
+  dish.style.top = y + "%";
+  label.style.left = (x + 2) + "%";
+  label.style.top = (y + 6) + "%";
+}, 16);
 </script>
 
 </body>
