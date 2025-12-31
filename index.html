@@ -2,169 +2,208 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8" />
-<meta name="viewport" content="width=device-width, initial-scale=1.0" />
-<title>Smart AR Menu – REAL AR</title>
-
-<script src="https://unpkg.com/three@0.155.0/build/three.min.js"></script>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>Smart AR Menu</title>
 
 <style>
   body {
     margin: 0;
     overflow: hidden;
+    font-family: system-ui, -apple-system, BlinkMacSystemFont;
     background: black;
-    font-family: system-ui;
   }
 
-  #startAR {
+  video {
     position: fixed;
+    inset: 0;
+    width: 100vw;
+    height: 100vh;
+    object-fit: cover;
+    z-index: 1;
+  }
+
+  #dish {
+    position: fixed;
+    width: 260px;
+    max-width: 70vw;
+    left: 50%;
     top: 50%;
-    left: 50%;
     transform: translate(-50%, -50%);
-    padding: 14px 22px;
-    background: #00ffcc;
-    color: black;
-    border: none;
-    border-radius: 14px;
-    font-size: 18px;
-    font-weight: 600;
-    z-index: 10;
+    z-index: 2;
+    pointer-events: none;
+    transition: opacity 0.25s ease, transform 0.2s ease;
   }
 
-  #message {
+  #reticle {
     position: fixed;
-    bottom: 12px;
+    width: 36px;
+    height: 36px;
+    border: 2px solid #00ffcc;
+    border-radius: 50%;
     left: 50%;
-    transform: translateX(-50%);
-    background: rgba(0,0,0,0.6);
+    top: 50%;
+    transform: translate(-50%, -50%);
+    z-index: 2;
+    pointer-events: none;
+    opacity: 0.85;
+  }
+
+  #label {
+    position: fixed;
+    background: rgba(0,0,0,0.65);
+    color: #fff;
+    font-size: 13px;
+    padding: 6px 10px;
+    border-radius: 8px;
+    z-index: 2;
+    opacity: 0;
+    transition: opacity 0.3s ease;
+  }
+
+  #panel {
+    position: fixed;
+    bottom: 0;
+    width: 100%;
+    background: rgba(0,0,0,0.75);
+    padding: 10px 0 14px;
+    z-index: 3;
+  }
+
+  .section {
+    color: #ffb703;
+    font-weight: 700;
+    margin: 10px 16px 6px;
+  }
+
+  .carousel {
+    display: flex;
+    gap: 12px;
+    overflow-x: auto;
+    padding: 0 16px;
+    scrollbar-width: none;
+  }
+
+  .carousel::-webkit-scrollbar { display: none; }
+
+  .item {
+    min-width: 120px;
+    background: rgba(255,255,255,0.12);
     color: white;
-    padding: 6px 12px;
-    border-radius: 10px;
+    border-radius: 14px;
+    padding: 10px;
+    text-align: center;
     font-size: 14px;
-    z-index: 10;
+    cursor: pointer;
+    backdrop-filter: blur(6px);
+    transition: transform 0.2s ease, background 0.2s ease;
+  }
+
+  .item:hover {
+    transform: scale(1.05);
+    background: rgba(255,255,255,0.22);
+  }
+
+  .title {
+    font-weight: 600;
+    margin-bottom: 4px;
   }
 </style>
 </head>
 
 <body>
 
-<button id="startAR">Start AR</button>
-<div id="message">Ready</div>
+<video id="camera" autoplay playsinline></video>
+<img id="dish" />
+<div id="reticle"></div>
+<div id="label">12 inch • serves 1–2</div>
+
+<div id="panel">
+  <div class="section">🍛 Desi</div>
+  <div class="carousel">
+    <div class="item" onclick="showDish(biryani,'Large • serves 2')"><div class="title">Biryani</div></div>
+    <div class="item" onclick="showDish(korma,'Medium • serves 1–2')"><div class="title">Chicken Korma</div></div>
+    <div class="item" onclick="showDish(butter,'Medium • serves 1')"><div class="title">Butter Chicken</div></div>
+    <div class="item" onclick="showDish(curry,'Medium • serves 1')"><div class="title">Chicken Curry</div></div>
+  </div>
+
+  <div class="section">🍝 Italian</div>
+  <div class="carousel">
+    <div class="item" onclick="showDish(pizza,'12 inch • serves 1–2')"><div class="title">Pizza</div></div>
+    <div class="item" onclick="showDish(lasagna,'Tray • serves 2')"><div class="title">Lasagna</div></div>
+    <div class="item" onclick="showDish(eggplant,'Plate • serves 1')"><div class="title">Eggplant Parm</div></div>
+  </div>
+
+  <div class="section">🌮 Mexican</div>
+  <div class="carousel">
+    <div class="item" onclick="showDish(taco,'2 pcs • serves 1')"><div class="title">Tacos</div></div>
+    <div class="item" onclick="showDish(burrito,'Large • serves 1')"><div class="title">Burrito</div></div>
+    <div class="item" onclick="showDish(quesadilla,'Medium • serves 1–2')"><div class="title">Quesadilla</div></div>
+  </div>
+</div>
 
 <script>
-const message = document.getElementById("message");
-function log(msg) { message.textContent = msg; }
+/* CAMERA */
+navigator.mediaDevices.getUserMedia({
+  video: { facingMode: "environment" },
+  audio: false
+}).then(stream => camera.srcObject = stream);
 
-/* FOOD IMAGES */
-const pizza = "https://i.imgur.com/2yaf2wb.png";
+/* IMAGES */
+const pizza = "";
+const biryani = "";
+const korma = "";
+const butter = "";
+const curry = "";
+const lasagna = "";
+const eggplant = "";
+const taco = "";
+const burrito = "";
+const quesadilla = "";
+  
+/* STICKY STATE */
+let locked = true;
+let anchorX = 50, anchorY = 50;
+let liveX = 50, liveY = 50;
 
-/* THREE SETUP */
-const scene = new THREE.Scene();
-const camera = new THREE.PerspectiveCamera();
-const renderer = new THREE.WebGLRenderer({ alpha: true, antialias: true });
-renderer.setSize(window.innerWidth, window.innerHeight);
-renderer.xr.enabled = true;
-document.body.appendChild(renderer.domElement);
-
-const light = new THREE.HemisphereLight(0xffffff, 0xbbbbff, 1);
-scene.add(light);
-
-/* RETICLE */
-const retGeo = new THREE.RingGeometry(0.06, 0.08, 32);
-const retMat = new THREE.MeshBasicMaterial({ color: 0x00ffcc });
-const reticle = new THREE.Mesh(retGeo, retMat);
-reticle.rotation.x = -Math.PI / 2;
-reticle.matrixAutoUpdate = false;
-reticle.visible = false;
-scene.add(reticle);
-
-let xrSession = null;
-let xrRefSpace = null;
-let hitTestSource = null;
-
-/* START AR SESSION */
-async function startAR() {
-  if (!navigator.xr) {
-    log("WebXR not supported");
-    return;
-  }
-
-  const supported = await navigator.xr.isSessionSupported("immersive-ar");
-  if (!supported) {
-    log("immersive-ar not supported on this device");
-    return;
-  }
-
-  xrSession = await navigator.xr.requestSession("immersive-ar", {
-    requiredFeatures: ["hit-test", "anchors"]
-  });
-
-  renderer.xr.setSession(xrSession);
-  document.getElementById("startAR").style.display = "none";
-
-  xrRefSpace = await xrSession.requestReferenceSpace("local");
-  const viewerSpace = await xrSession.requestReferenceSpace("viewer");
-
-  hitTestSource = await xrSession.requestHitTestSource({ space: viewerSpace });
-
-  xrSession.addEventListener("select", placeFood);
-
-  renderer.setAnimationLoop(onXRFrame);
+/* SHOW DISH */
+function showDish(src, text) {
+  dish.style.opacity = "0";
+  setTimeout(() => {
+    dish.src = src;
+    dish.style.opacity = "1";
+    label.textContent = text;
+    label.style.opacity = "1";
+  }, 150);
 }
 
-/* PLACE FOOD */
-async function placeFood(event) {
-  if (!reticle.visible) return;
-
-  const frame = event.frame;
-  const hitResults = frame.getHitTestResults(hitTestSource);
-  if (!hitResults.length) return;
-
-  const hit = hitResults[0];
-  const anchor = await hit.createAnchor();
-  const anchorSpace = anchor.anchorSpace;
-
-  const tex = new THREE.TextureLoader().load(pizza);
-  const mat = new THREE.MeshBasicMaterial({ map: tex, transparent: true });
-  const geo = new THREE.PlaneGeometry(0.3, 0.3);
-  const mesh = new THREE.Mesh(geo, mat);
-  mesh.rotation.x = -Math.PI / 2;
-
-  const group = new THREE.Group();
-  group.matrixAutoUpdate = false;
-  group.add(mesh);
-  scene.add(group);
-
-  xrSession.addEventListener("frame", (ev) => {
-    const pose = ev.frame.getPose(anchorSpace, xrRefSpace);
-    if (pose) {
-      group.matrix.fromArray(pose.transform.matrix);
-    }
-  });
-}
-
-/* FRAME LOOP */
-function onXRFrame(time, frame) {
-  if (!frame) return;
-
-  const pose = frame.getViewerPose(xrRefSpace);
-  if (!pose) return;
-
-  const hits = frame.getHitTestResults(hitTestSource);
-  if (hits.length) {
-    const hit = hits[0];
-    const hitPose = hit.getPose(xrRefSpace);
-    reticle.visible = true;
-    reticle.matrix.fromArray(hitPose.transform.matrix);
-    log("Surface found — tap to place");
-  } else {
-    reticle.visible = false;
-    log("Move phone to find a surface");
+/* TAP TO LOCK */
+window.addEventListener("click", () => {
+  if (!locked) {
+    locked = true;
+    anchorX = liveX;
+    anchorY = liveY;
+    reticle.style.display = "none";
   }
+});
 
-  renderer.render(scene, camera);
-}
+/* MEASURE-LIKE MOTION */
+window.addEventListener("deviceorientation", e => {
+  if (locked) return;
+  const x = e.gamma || 0;
+  const y = e.beta || 0;
+  liveX = 50 + x * 0.04;
+  liveY = 50 + y * 0.04;
+});
 
-document.getElementById("startAR").addEventListener("click", startAR);
+/* APPLY POSITION */
+setInterval(() => {
+  const x = locked ? anchorX : liveX;
+  const y = locked ? anchorY : liveY;
+  dish.style.left = x + "%";
+  dish.style.top = y + "%";
+  label.style.left = (x + 2) + "%";
+  label.style.top = (y + 6) + "%";
+}, 16);
 </script>
 
 </body>
