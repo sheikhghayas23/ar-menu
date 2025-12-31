@@ -1,209 +1,157 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-<meta charset="UTF-8" />
-<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<meta charset="UTF-8">
 <title>Smart AR Menu</title>
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+<script src="https://unpkg.com/three@0.155.0/build/three.min.js"></script>
 
 <style>
   body {
     margin: 0;
     overflow: hidden;
-    font-family: system-ui, -apple-system, BlinkMacSystemFont;
+    font-family: -apple-system, system-ui;
     background: black;
   }
 
-  video {
-    position: fixed;
-    inset: 0;
-    width: 100vw;
-    height: 100vh;
-    object-fit: cover;
-    z-index: 1;
-  }
-
-  #dish {
-    position: fixed;
-    width: 260px;
-    max-width: 70vw;
-    left: 50%;
-    top: 50%;
-    transform: translate(-50%, -50%);
-    z-index: 2;
-    pointer-events: none;
-    transition: opacity 0.25s ease, transform 0.2s ease;
-  }
-
-  #reticle {
-    position: fixed;
-    width: 36px;
-    height: 36px;
-    border: 2px solid #00ffcc;
-    border-radius: 50%;
-    left: 50%;
-    top: 50%;
-    transform: translate(-50%, -50%);
-    z-index: 2;
-    pointer-events: none;
-    opacity: 0.85;
-  }
-
-  #label {
-    position: fixed;
-    background: rgba(0,0,0,0.65);
-    color: #fff;
-    font-size: 13px;
-    padding: 6px 10px;
-    border-radius: 8px;
-    z-index: 2;
-    opacity: 0;
-    transition: opacity 0.3s ease;
-  }
-
-  #panel {
+  #ui {
     position: fixed;
     bottom: 0;
     width: 100%;
     background: rgba(0,0,0,0.75);
-    padding: 10px 0 14px;
-    z-index: 3;
+    padding: 12px;
+    z-index: 10;
   }
 
-  .section {
-    color: #ffb703;
-    font-weight: 700;
-    margin: 10px 16px 6px;
-  }
-
-  .carousel {
+  .row {
     display: flex;
     gap: 12px;
     overflow-x: auto;
-    padding: 0 16px;
-    scrollbar-width: none;
   }
-
-  .carousel::-webkit-scrollbar { display: none; }
 
   .item {
     min-width: 120px;
-    background: rgba(255,255,255,0.12);
+    padding: 10px;
+    background: rgba(255,255,255,0.15);
     color: white;
     border-radius: 14px;
-    padding: 10px;
     text-align: center;
-    font-size: 14px;
     cursor: pointer;
-    backdrop-filter: blur(6px);
-    transition: transform 0.2s ease, background 0.2s ease;
+    backdrop-filter: blur(8px);
   }
 
-  .item:hover {
-    transform: scale(1.05);
-    background: rgba(255,255,255,0.22);
-  }
-
-  .title {
-    font-weight: 600;
-    margin-bottom: 4px;
+  .hint {
+    position: fixed;
+    top: 12px;
+    left: 50%;
+    transform: translateX(-50%);
+    color: white;
+    background: rgba(0,0,0,0.6);
+    padding: 8px 14px;
+    border-radius: 12px;
+    z-index: 10;
+    font-size: 14px;
   }
 </style>
 </head>
 
 <body>
 
-<video id="camera" autoplay playsinline></video>
-<img id="dish" />
-<div id="reticle"></div>
-<div id="label">12 inch • serves 1–2</div>
+<div class="hint">Move phone to find surface • Tap to place food</div>
 
-<div id="panel">
-  <div class="section">🍛 Desi</div>
-  <div class="carousel">
-    <div class="item" onclick="showDish(biryani,'Large • serves 2')"><div class="title">Biryani</div></div>
-    <div class="item" onclick="showDish(korma,'Medium • serves 1–2')"><div class="title">Chicken Korma</div></div>
-    <div class="item" onclick="showDish(butter,'Medium • serves 1')"><div class="title">Butter Chicken</div></div>
-    <div class="item" onclick="showDish(curry,'Medium • serves 1')"><div class="title">Chicken Curry</div></div>
-  </div>
-
-  <div class="section">🍝 Italian</div>
-  <div class="carousel">
-    <div class="item" onclick="showDish(pizza,'12 inch • serves 1–2')"><div class="title">Pizza</div></div>
-    <div class="item" onclick="showDish(lasagna,'Tray • serves 2')"><div class="title">Lasagna</div></div>
-    <div class="item" onclick="showDish(eggplant,'Plate • serves 1')"><div class="title">Eggplant Parm</div></div>
-  </div>
-
-  <div class="section">🌮 Mexican</div>
-  <div class="carousel">
-    <div class="item" onclick="showDish(taco,'2 pcs • serves 1')"><div class="title">Tacos</div></div>
-    <div class="item" onclick="showDish(burrito,'Large • serves 1')"><div class="title">Burrito</div></div>
-    <div class="item" onclick="showDish(quesadilla,'Medium • serves 1–2')"><div class="title">Quesadilla</div></div>
+<div id="ui">
+  <div class="row">
+    <div class="item" onclick="selectDish(pizza)">Pizza</div>
+    <div class="item" onclick="selectDish(taco)">Taco</div>
+    <div class="item" onclick="selectDish(biryani)">Biryani</div>
+    <div class="item" onclick="selectDish(burrito)">Burrito</div>
   </div>
 </div>
 
 <script>
-/* CAMERA */
-navigator.mediaDevices.getUserMedia({
-  video: { facingMode: "environment" },
-  audio: false
-}).then(stream => camera.srcObject = stream);
+/* IMAGE URLs */
+const pizza = "https://i.imgur.com/2yaf2wb.png";
+const taco = "https://i.imgur.com/qZ5RZ8L.png";
+const biryani = "https://i.imgur.com/KkK6wFf.png";
+const burrito = "https://i.imgur.com/U9QZ7nK.png";
 
-/* IMAGES */
-const pizza = "https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcTIibPbOeDQQscm9g-fDNdCvROokQJukg8nYQ&s";
-const biryani = "";
-const korma = "";
-const butter = "";
-const curry = "";
-const lasagna = "";
-const eggplant = "";
-const taco = "";
-const burrito = "";
-const quesadilla = "";
-  
-/* STICKY STATE */
-let locked = true;
-let anchorX = 50, anchorY = 50;
-let liveX = 50, liveY = 50;
+let selectedImage = null;
 
-/* SHOW DISH */
-function showDish(src, text) {
-  dish.style.opacity = "0";
-  setTimeout(() => {
-    dish.src = src;
-    dish.style.opacity = "1";
-    label.textContent = text;
-    label.style.opacity = "1";
-  }, 150);
+/* THREE */
+const scene = new THREE.Scene();
+const camera = new THREE.PerspectiveCamera();
+const renderer = new THREE.WebGLRenderer({ alpha: true, antialias: true });
+renderer.setSize(window.innerWidth, window.innerHeight);
+renderer.xr.enabled = true;
+document.body.appendChild(renderer.domElement);
+
+const light = new THREE.HemisphereLight(0xffffff, 0xbbbbff, 1);
+scene.add(light);
+
+/* RETICLE */
+const reticleGeo = new THREE.RingGeometry(0.06, 0.08, 32);
+const reticleMat = new THREE.MeshBasicMaterial({ color: 0x00ffcc });
+const reticle = new THREE.Mesh(reticleGeo, reticleMat);
+reticle.rotation.x = -Math.PI / 2;
+reticle.visible = false;
+scene.add(reticle);
+
+/* HIT TEST */
+let hitTestSource = null;
+let hitTestRequested = false;
+
+function selectDish(img) {
+  selectedImage = img;
 }
 
-/* TAP TO LOCK */
-window.addEventListener("click", () => {
-  if (!locked) {
-    locked = true;
-    anchorX = liveX;
-    anchorY = liveY;
-    reticle.style.display = "none";
-  }
+/* PLACE FOOD */
+renderer.xr.addEventListener("sessionstart", async () => {
+  const session = renderer.xr.getSession();
+  const viewerSpace = await session.requestReferenceSpace("viewer");
+  hitTestSource = await session.requestHitTestSource({ space: viewerSpace });
+  hitTestRequested = true;
+
+  const refSpace = await session.requestReferenceSpace("local");
+
+  session.addEventListener("select", () => {
+    if (!reticle.visible || !selectedImage) return;
+
+    const tex = new THREE.TextureLoader().load(selectedImage);
+    const mat = new THREE.MeshBasicMaterial({ map: tex, transparent: true });
+    const geo = new THREE.PlaneGeometry(0.3, 0.3);
+    const mesh = new THREE.Mesh(geo, mat);
+
+    mesh.position.setFromMatrixPosition(reticle.matrix);
+    mesh.rotation.x = -Math.PI / 2;
+    scene.add(mesh);
+  });
+
+  renderer.setAnimationLoop((time, frame) => {
+    if (!frame) return;
+
+    const refSpace = renderer.xr.getReferenceSpace();
+    const hitTestResults = frame.getHitTestResults(hitTestSource);
+
+    if (hitTestResults.length) {
+      const hit = hitTestResults[0];
+      const pose = hit.getPose(refSpace);
+      reticle.visible = true;
+      reticle.matrix.fromArray(pose.transform.matrix);
+    } else {
+      reticle.visible = false;
+    }
+
+    renderer.render(scene, camera);
+  });
 });
 
-/* MEASURE-LIKE MOTION */
-window.addEventListener("deviceorientation", e => {
-  if (locked) return;
-  const x = e.gamma || 0;
-  const y = e.beta || 0;
-  liveX = 50 + x * 0.04;
-  liveY = 50 + y * 0.04;
+/* START AR */
+navigator.xr.requestSession("immersive-ar", {
+  requiredFeatures: ["hit-test"]
+}).then(session => {
+  renderer.xr.setSession(session);
 });
-
-/* APPLY POSITION */
-setInterval(() => {
-  const x = locked ? anchorX : liveX;
-  const y = locked ? anchorY : liveY;
-  dish.style.left = x + "%";
-  dish.style.top = y + "%";
-  label.style.left = (x + 2) + "%";
-  label.style.top = (y + 6) + "%";
-}, 16);
 </script>
 
 </body>
