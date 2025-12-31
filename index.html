@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<title>Smart AR Menu</title>
+<title>Smart AR Menu – PNG Version</title>
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 
 <script src="https://unpkg.com/three@0.155.0/build/three.min.js"></script>
@@ -41,6 +41,10 @@
     backdrop-filter: blur(8px);
   }
 
+  .item.selected {
+    background: rgba(0,255,204,0.3);
+  }
+
   .hint {
     position: fixed;
     top: 12px;
@@ -62,23 +66,35 @@
 
 <div id="ui">
   <div class="row">
-    <div class="item" onclick="selectDish(pizza)">Pizza</div>
-    <div class="item" onclick="selectDish(taco)">Taco</div>
-    <div class="item" onclick="selectDish(biryani)">Biryani</div>
-    <div class="item" onclick="selectDish(burrito)">Burrito</div>
+    <div class="item" data-img="pizza">Pizza</div>
+    <div class="item" data-img="taco">Taco</div>
+    <div class="item" data-img="biryani">Biryani</div>
+    <div class="item" data-img="burrito">Burrito</div>
   </div>
 </div>
 
 <script>
 /* IMAGE URLs */
-const pizza = "https://i.imgur.com/2yaf2wb.png";
-const taco = "https://i.imgur.com/qZ5RZ8L.png";
-const biryani = "https://i.imgur.com/KkK6wFf.png";
-const burrito = "https://i.imgur.com/U9QZ7nK.png";
+const IMAGE_URLS = {
+  pizza: "https://i.imgur.com/2yaf2wb.png",
+  taco: "https://i.imgur.com/qZ5RZ8L.png",
+  biryani: "https://i.imgur.com/KkK6wFf.png",
+  burrito: "https://i.imgur.com/U9QZ7nK.png"
+};
 
-let selectedImage = null;
+let selectedKey = null;
 
-/* THREE */
+/* UI SELECTION */
+const itemEls = document.querySelectorAll(".item");
+itemEls.forEach(el => {
+  el.addEventListener("click", () => {
+    itemEls.forEach(i => i.classList.remove("selected"));
+    el.classList.add("selected");
+    selectedKey = el.getAttribute("data-img");
+  });
+});
+
+/* THREE SETUP */
 const scene = new THREE.Scene();
 const camera = new THREE.PerspectiveCamera();
 const renderer = new THREE.WebGLRenderer({ alpha: true, antialias: true });
@@ -94,85 +110,118 @@ const reticleGeo = new THREE.RingGeometry(0.06, 0.08, 32);
 const reticleMat = new THREE.MeshBasicMaterial({ color: 0x00ffcc });
 const reticle = new THREE.Mesh(reticleGeo, reticleMat);
 reticle.rotation.x = -Math.PI / 2;
+reticle.matrixAutoUpdate = false;
 reticle.visible = false;
 scene.add(reticle);
 
-/* HIT TEST */
+/* HIT TEST + ANCHORS */
 let hitTestSource = null;
 let localSpace = null;
+let xrSession = null;
+let xrRefSpace = null;
 
-function selectDish(img) {
-  selectedImage = img;
-}
+/* STORE ANCHORS WITH GROUPS */
+const anchoredObjects = [];
 
-/* PLACE FOOD WITH ANCHOR */
-renderer.xr.addEventListener("sessionstart", async () => {
-  const session = renderer.xr.getSession();
+/* START AR SESSION */
+async function startAR() {
+  if (!navigator.xr) {
+    alert("WebXR not supported on this device/browser.");
+    return;
+  }
 
-  const viewerSpace = await session.requestReferenceSpace("viewer");
-  localSpace = await session.requestReferenceSpace("local");
-
-  hitTestSource = await session.requestHitTestSource({ space: viewerSpace });
-
-  session.addEventListener("select", async (event) => {
-    if (!reticle.visible || !selectedImage) return;
-
-    const frame = event.frame;
-    const hitTestResults = frame.getHitTestResults(hitTestSource);
-    if (!hitTestResults.length) return;
-
-    const hit = hitTestResults[0];
-
-    // ⭐ Create anchor
-    const anchor = await hit.createAnchor();
-
-    // ⭐ Create food mesh
-    const tex = new THREE.TextureLoader().load(selectedImage);
-    const mat = new THREE.MeshBasicMaterial({ map: tex, transparent: true });
-    const geo = new THREE.PlaneGeometry(0.3, 0.3);
-    const mesh = new THREE.Mesh(geo, mat);
-    mesh.rotation.x = -Math.PI / 2;
-
-    // ⭐ Attach mesh to anchor
-    const anchorGroup = new THREE.Group();
-    anchorGroup.matrixAutoUpdate = false;
-    scene.add(anchorGroup);
-    anchorGroup.add(mesh);
-
-    // ⭐ Update anchor position every frame
-    anchor.context = { group: anchorGroup };
-    session.addEventListener("frame", () => {
-      const pose = frame.getPose(anchor.anchorSpace, localSpace);
-      if (pose) {
-        anchorGroup.matrix.fromArray(pose.transform.matrix);
-      }
-    });
+  xrSession = await navigator.xr.requestSession("immersive-ar", {
+    requiredFeatures: ["hit-test", "anchors"]
   });
 
-  renderer.setAnimationLoop((time, frame) => {
-    if (!frame) return;
+  renderer.xr.setSession(xrSession);
 
-    const hitTestResults = frame.getHitTestResults(hitTestSource);
+  xrRefSpace = await xrSession.requestReferenceSpace("local");
+  const viewerSpace = await xrSession.requestReferenceSpace("viewer");
+  localSpace = xrRefSpace;
 
-    if (hitTestResults.length) {
-      const hit = hitTestResults[0];
-      const pose = hit.getPose(localSpace);
-      reticle.visible = true;
-      reticle.matrix.fromArray(pose.transform.matrix);
+  hitTestSource = await xrSession.requestHitTestSource({ space: viewerSpace });
+
+  xrSession.addEventListener("end", () => {
+    hitTestSource = null;
+  });
+
+  xrSession.addEventListener("select", onSelect);
+
+  renderer.setAnimationLoop(onXRFrame);
+}
+
+/* PLACE PNG FOOD ON TAP */
+async function onSelect(event) {
+  if (!reticle.visible || !selectedKey || !hitTestSource) return;
+
+  const frame = event.frame;
+  const hitResults = frame.getHitTestResults(hitTestSource);
+  if (!hitResults.length) return;
+
+  const hit = hitResults[0];
+
+  // Create anchor at hit
+  if (!hit.createAnchor) {
+    console.warn("Anchors not supported on this device.");
+    return;
+  }
+
+  const anchor = await hit.createAnchor();
+  const anchorSpace = anchor.anchorSpace;
+
+  // Create food plane
+  const tex = new THREE.TextureLoader().load(IMAGE_URLS[selectedKey]);
+  const mat = new THREE.MeshBasicMaterial({ map: tex, transparent: true });
+  const geo = new THREE.PlaneGeometry(0.3, 0.3);
+  const mesh = new THREE.Mesh(geo, mat);
+  mesh.rotation.x = -Math.PI / 2;
+
+  // Group attached to anchor
+  const group = new THREE.Group();
+  group.matrixAutoUpdate = false;
+  group.add(mesh);
+  scene.add(group);
+
+  anchoredObjects.push({ anchor, anchorSpace, group });
+}
+
+/* FRAME LOOP */
+function onXRFrame(time, frame) {
+  if (!frame) return;
+
+  const referenceSpace = xrRefSpace;
+  const viewerPose = frame.getViewerPose(referenceSpace);
+  if (!viewerPose) return;
+
+  // Update reticle via hit test
+  if (hitTestSource) {
+    const hitResults = frame.getHitTestResults(hitTestSource);
+    if (hitResults.length) {
+      const hit = hitResults[0];
+      const pose = hit.getPose(referenceSpace);
+      if (pose) {
+        reticle.visible = true;
+        reticle.matrix.fromArray(pose.transform.matrix);
+      }
     } else {
       reticle.visible = false;
     }
+  }
 
-    renderer.render(scene, camera);
+  // Update all anchors
+  anchoredObjects.forEach(obj => {
+    const pose = frame.getPose(obj.anchorSpace, referenceSpace);
+    if (pose) {
+      obj.group.matrix.fromArray(pose.transform.matrix);
+    }
   });
-});
 
-/* START AR */
-navigator.xr.requestSession("immersive-ar", {
-  requiredFeatures: ["hit-test", "anchors"]
-}).then(session => {
-  renderer.xr.setSession(session);
-});
+  renderer.render(scene, camera);
+}
+
+/* AUTO START AR */
+startAR();
 </script>
 
 </body>
