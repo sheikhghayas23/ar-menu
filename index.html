@@ -1,9 +1,9 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-<meta charset="UTF-8">
-<title>Smart AR Menu – PNG Version</title>
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Smart AR Menu – REAL AR</title>
 
 <script src="https://unpkg.com/three@0.155.0/build/three.min.js"></script>
 
@@ -11,88 +11,51 @@
   body {
     margin: 0;
     overflow: hidden;
-    font-family: -apple-system, system-ui;
     background: black;
+    font-family: system-ui;
   }
 
-  #ui {
+  #startAR {
     position: fixed;
-    bottom: 0;
-    width: 100%;
-    background: rgba(0,0,0,0.75);
-    padding: 12px;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    padding: 14px 22px;
+    background: #00ffcc;
+    color: black;
+    border: none;
+    border-radius: 14px;
+    font-size: 18px;
+    font-weight: 600;
     z-index: 10;
   }
 
-  .row {
-    display: flex;
-    gap: 12px;
-    overflow-x: auto;
-  }
-
-  .item {
-    min-width: 120px;
-    padding: 10px;
-    background: rgba(255,255,255,0.15);
-    color: white;
-    border-radius: 14px;
-    text-align: center;
-    cursor: pointer;
-    backdrop-filter: blur(8px);
-  }
-
-  .item.selected {
-    background: rgba(0,255,204,0.3);
-  }
-
-  .hint {
+  #message {
     position: fixed;
-    top: 12px;
+    bottom: 12px;
     left: 50%;
     transform: translateX(-50%);
-    color: white;
     background: rgba(0,0,0,0.6);
-    padding: 8px 14px;
-    border-radius: 12px;
-    z-index: 10;
+    color: white;
+    padding: 6px 12px;
+    border-radius: 10px;
     font-size: 14px;
+    z-index: 10;
   }
 </style>
 </head>
 
 <body>
 
-<div class="hint">Move phone to find surface • Tap to place food</div>
-
-<div id="ui">
-  <div class="row">
-    <div class="item" data-img="pizza">Pizza</div>
-    <div class="item" data-img="taco">Taco</div>
-    <div class="item" data-img="biryani">Biryani</div>
-    <div class="item" data-img="burrito">Burrito</div>
-  </div>
-</div>
+<button id="startAR">Start AR</button>
+<div id="message">Ready</div>
 
 <script>
-/* IMAGE URLs */
-const IMAGE_URLS = {
-  pizza: "https://i.imgur.com/2yaf2wb.png",
-  taco: "https://i.imgur.com/qZ5RZ8L.png",
-  biryani: "https://i.imgur.com/KkK6wFf.png",
-  burrito: "https://i.imgur.com/U9QZ7nK.png"
-};
+const message = document.getElementById("message");
+function log(msg) { message.textContent = msg; }
 
-let selectedKey = null;
-
-/* UI SELECTION */
-const itemEls = document.querySelectorAll(".item");
-itemEls.forEach(el => {
-  el.addEventListener("click", () => {
-    itemEls.forEach(i => i.classList.remove("selected"));
-    el.classList.add("selected");
-    selectedKey = el.getAttribute("data-img");
-  });
-});
+/* FOOD IMAGES */
+const pizza = "https://i.imgur.com/2yaf2wb.png";
 
 /* THREE SETUP */
 const scene = new THREE.Scene();
@@ -106,27 +69,28 @@ const light = new THREE.HemisphereLight(0xffffff, 0xbbbbff, 1);
 scene.add(light);
 
 /* RETICLE */
-const reticleGeo = new THREE.RingGeometry(0.06, 0.08, 32);
-const reticleMat = new THREE.MeshBasicMaterial({ color: 0x00ffcc });
-const reticle = new THREE.Mesh(reticleGeo, reticleMat);
+const retGeo = new THREE.RingGeometry(0.06, 0.08, 32);
+const retMat = new THREE.MeshBasicMaterial({ color: 0x00ffcc });
+const reticle = new THREE.Mesh(retGeo, retMat);
 reticle.rotation.x = -Math.PI / 2;
 reticle.matrixAutoUpdate = false;
 reticle.visible = false;
 scene.add(reticle);
 
-/* HIT TEST + ANCHORS */
-let hitTestSource = null;
-let localSpace = null;
 let xrSession = null;
 let xrRefSpace = null;
-
-/* STORE ANCHORS WITH GROUPS */
-const anchoredObjects = [];
+let hitTestSource = null;
 
 /* START AR SESSION */
 async function startAR() {
   if (!navigator.xr) {
-    alert("WebXR not supported on this device/browser.");
+    log("WebXR not supported");
+    return;
+  }
+
+  const supported = await navigator.xr.isSessionSupported("immersive-ar");
+  if (!supported) {
+    log("immersive-ar not supported on this device");
     return;
   }
 
@@ -135,93 +99,72 @@ async function startAR() {
   });
 
   renderer.xr.setSession(xrSession);
+  document.getElementById("startAR").style.display = "none";
 
   xrRefSpace = await xrSession.requestReferenceSpace("local");
   const viewerSpace = await xrSession.requestReferenceSpace("viewer");
-  localSpace = xrRefSpace;
 
   hitTestSource = await xrSession.requestHitTestSource({ space: viewerSpace });
 
-  xrSession.addEventListener("end", () => {
-    hitTestSource = null;
-  });
-
-  xrSession.addEventListener("select", onSelect);
+  xrSession.addEventListener("select", placeFood);
 
   renderer.setAnimationLoop(onXRFrame);
 }
 
-/* PLACE PNG FOOD ON TAP */
-async function onSelect(event) {
-  if (!reticle.visible || !selectedKey || !hitTestSource) return;
+/* PLACE FOOD */
+async function placeFood(event) {
+  if (!reticle.visible) return;
 
   const frame = event.frame;
   const hitResults = frame.getHitTestResults(hitTestSource);
   if (!hitResults.length) return;
 
   const hit = hitResults[0];
-
-  // Create anchor at hit
-  if (!hit.createAnchor) {
-    console.warn("Anchors not supported on this device.");
-    return;
-  }
-
   const anchor = await hit.createAnchor();
   const anchorSpace = anchor.anchorSpace;
 
-  // Create food plane
-  const tex = new THREE.TextureLoader().load(IMAGE_URLS[selectedKey]);
+  const tex = new THREE.TextureLoader().load(pizza);
   const mat = new THREE.MeshBasicMaterial({ map: tex, transparent: true });
   const geo = new THREE.PlaneGeometry(0.3, 0.3);
   const mesh = new THREE.Mesh(geo, mat);
   mesh.rotation.x = -Math.PI / 2;
 
-  // Group attached to anchor
   const group = new THREE.Group();
   group.matrixAutoUpdate = false;
   group.add(mesh);
   scene.add(group);
 
-  anchoredObjects.push({ anchor, anchorSpace, group });
+  xrSession.addEventListener("frame", (ev) => {
+    const pose = ev.frame.getPose(anchorSpace, xrRefSpace);
+    if (pose) {
+      group.matrix.fromArray(pose.transform.matrix);
+    }
+  });
 }
 
 /* FRAME LOOP */
 function onXRFrame(time, frame) {
   if (!frame) return;
 
-  const referenceSpace = xrRefSpace;
-  const viewerPose = frame.getViewerPose(referenceSpace);
-  if (!viewerPose) return;
+  const pose = frame.getViewerPose(xrRefSpace);
+  if (!pose) return;
 
-  // Update reticle via hit test
-  if (hitTestSource) {
-    const hitResults = frame.getHitTestResults(hitTestSource);
-    if (hitResults.length) {
-      const hit = hitResults[0];
-      const pose = hit.getPose(referenceSpace);
-      if (pose) {
-        reticle.visible = true;
-        reticle.matrix.fromArray(pose.transform.matrix);
-      }
-    } else {
-      reticle.visible = false;
-    }
+  const hits = frame.getHitTestResults(hitTestSource);
+  if (hits.length) {
+    const hit = hits[0];
+    const hitPose = hit.getPose(xrRefSpace);
+    reticle.visible = true;
+    reticle.matrix.fromArray(hitPose.transform.matrix);
+    log("Surface found — tap to place");
+  } else {
+    reticle.visible = false;
+    log("Move phone to find a surface");
   }
-
-  // Update all anchors
-  anchoredObjects.forEach(obj => {
-    const pose = frame.getPose(obj.anchorSpace, referenceSpace);
-    if (pose) {
-      obj.group.matrix.fromArray(pose.transform.matrix);
-    }
-  });
 
   renderer.render(scene, camera);
 }
 
-/* AUTO START AR */
-startAR();
+document.getElementById("startAR").addEventListener("click", startAR);
 </script>
 
 </body>
