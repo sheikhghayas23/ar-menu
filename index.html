@@ -3,16 +3,27 @@
 <head>
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no"/>
-<title>AR Spatial Menu - Fixed Overlap</title>
+<title>Pro Spatial AR Menu</title>
 
 <style>
-  :root { --accent: #00ffcc; }
-  body { margin: 0; overflow: hidden; font-family: -apple-system, sans-serif; background: #000; color: white; }
+  :root { 
+    --accent: #00ffcc; 
+    --glass: rgba(15, 15, 15, 0.85);
+    --card-bg: rgba(255, 255, 255, 0.1);
+  }
+
+  body { 
+    margin: 0; 
+    overflow: hidden; 
+    font-family: -apple-system, system-ui, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; 
+    background: #000; 
+    color: white; 
+  }
   
   video { position: fixed; inset: 0; width: 100vw; height: 100vh; object-fit: cover; z-index: 1; }
 
-  /* 3D Container */
-  #viewport { position: fixed; inset: 0; z-index: 2; perspective: 2000px; pointer-events: none; }
+  /* 3D Stage */
+  #viewport { position: fixed; inset: 0; z-index: 2; perspective: 1800px; pointer-events: none; }
   #world { position: absolute; width: 100%; height: 100%; transform-style: preserve-3d; }
 
   .spatial-node {
@@ -22,13 +33,20 @@
   }
 
   .food-img {
-    width: 250px; border-radius: 50%;
-    filter: drop-shadow(0 20px 40px rgba(0,0,0,0.8));
-    animation: dropIn 0.5s ease-out;
+    width: 240px; height: 240px; object-fit: cover;
+    border-radius: 50%; border: 6px solid rgba(255,255,255,0.2);
+    filter: drop-shadow(0 25px 50px rgba(0,0,0,0.8));
+    animation: dropIn 0.5s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+  }
+
+  .label-3d {
+    background: var(--glass); padding: 4px 12px; border-radius: 20px;
+    font-size: 12px; font-weight: 600; margin-top: 10px;
+    border: 1px solid rgba(255,255,255,0.2);
   }
 
   @keyframes dropIn {
-    0% { transform: scale(0) translateZ(-500px); opacity: 0; }
+    0% { transform: scale(0) translateZ(-400px); opacity: 0; }
     100% { transform: scale(1) translateZ(0); opacity: 1; }
   }
 
@@ -36,40 +54,55 @@
   #reticle {
     position: fixed; left: 50%; top: 50%;
     transform: translate(-50%, -50%);
-    width: 35px; height: 35px;
+    width: 32px; height: 32px;
     border: 2px solid white; border-radius: 50%;
     z-index: 5; pointer-events: none;
+    box-shadow: 0 0 15px rgba(0,0,0,0.5);
   }
-  #reticle::after { content: ''; width: 4px; height: 4px; background: var(--accent); border-radius: 50%; }
+  #reticle::after { content: ''; width: 4px; height: 4px; background: var(--accent); border-radius: 50%; position: absolute; top:50%; left:50%; transform: translate(-50%,-50%); }
 
   /* UI Panel */
   #ui {
     position: fixed; bottom: 0; width: 100%;
-    background: linear-gradient(to top, #000 80%, transparent);
-    z-index: 10; padding: 20px 0 40px;
+    background: linear-gradient(to top, rgba(0,0,0,1) 70%, transparent);
+    z-index: 10; padding: 20px 0 calc(20px + env(safe-area-inset-bottom));
   }
 
-  .carousel { display: flex; gap: 15px; overflow-x: auto; padding: 0 20px; scrollbar-width: none; }
-  .carousel::-webkit-scrollbar { display: none; }
+  .category-bar {
+    display: flex; gap: 10px; overflow-x: auto; padding: 0 20px 15px;
+    scrollbar-width: none;
+  }
+  .cat-btn {
+    padding: 6px 14px; background: rgba(255,255,255,0.1);
+    border-radius: 20px; font-size: 11px; font-weight: 700;
+    text-transform: uppercase; white-space: nowrap; border: 1px solid transparent;
+  }
+  .cat-btn.active { background: var(--accent); color: #000; }
+
+  .carousel { display: flex; gap: 12px; overflow-x: auto; padding: 0 20px; scrollbar-width: none; }
+  .carousel::-webkit-scrollbar, .category-bar::-webkit-scrollbar { display: none; }
 
   .card {
-    min-width: 100px; padding: 15px; background: rgba(255,255,255,0.1);
-    border-radius: 18px; border: 1px solid rgba(255,255,255,0.2);
-    text-align: center; font-weight: bold; transition: 0.3s;
+    min-width: 100px; padding: 14px; background: var(--card-bg);
+    border-radius: 18px; border: 1px solid rgba(255,255,255,0.1);
+    text-align: center; transition: 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    backdrop-filter: blur(10px);
   }
-  .card.active { background: var(--accent); color: #000; border-color: #fff; }
+  .card.active { border-color: var(--accent); background: rgba(0,255,204,0.1); transform: scale(1.05); }
+  .card-name { font-size: 13px; font-weight: 600; margin-top: 5px; }
 
   #reset-btn {
     position: fixed; top: 20px; right: 20px; z-index: 15;
-    background: rgba(255,0,0,0.6); color: white; border: none;
-    padding: 10px 15px; border-radius: 10px; font-weight: bold;
+    background: rgba(255,59,48,0.8); color: white; border: none;
+    padding: 10px 16px; border-radius: 12px; font-weight: bold; font-size: 12px;
+    backdrop-filter: blur(5px);
   }
 </style>
 </head>
 <body>
 
 <video id="camera" autoplay playsinline></video>
-<button id="reset-btn" onclick="world.innerHTML = ''; placedNodes = [];">RESET</button>
+<button id="reset-btn" onclick="clearAll()">RESET</button>
 <div id="reticle"></div>
 
 <div id="viewport">
@@ -77,39 +110,125 @@
 </div>
 
 <div id="ui">
+  <div class="category-bar" id="catBar"></div>
   <div class="carousel" id="menu"></div>
 </div>
 
 <script>
-const items = [
-  { name: 'Biryani', img: 'https://media.istockphoto.com/id/501150349/photo/chicken-biryani-11.jpg?s=612x612&w=0&k=20&c=w6mDnUx8MnH3rnP9bR0VfWRwrODcbTz-6U07o3Zrs4o=' },
-  { name: 'Pizza', img: 'https://img.freepik.com/free-psd/delicious-pepperoni-pizza-culinary-delight_632498-24206.jpg?w=740' },
-  { name: 'Burger', img: 'https://images.unsplash.com/photo-1568901346375-23c9450c58cd?q=80&w=500' }
+const categories = [
+  { name: "Desi", icon: "🍛", items: [
+      { name: 'Biryani', img: 'https://media.istockphoto.com/id/501150349/photo/chicken-biryani-11.jpg?s=612x612&w=0&k=20&c=w6mDnUx8MnH3rnP9bR0VfWRwrODcbTz-6U07o3Zrs4o=' },
+      { name: 'Butter Chicken', img: 'https://images.unsplash.com/photo-1603894584115-f73f2ecb4f08?w=500' },
+      { name: 'Chicken Curry', img: 'https://images.unsplash.com/photo-1565557623262-b51c2513a641?w=500' },
+      { name: 'Korma', img: 'https://images.unsplash.com/photo-1631452180519-c014fe946bc7?w=500' },
+      { name: 'Samosas', img: 'https://images.unsplash.com/photo-1601050648497-3f908452e391?w=500' },
+      { name: 'Palak Paneer', img: 'https://images.unsplash.com/photo-1546833999-b9f581a1996d?w=500' }
+  ]},
+  { name: "Italian", icon: "🍝", items: [
+      { name: 'Pizza', img: 'https://img.freepik.com/free-psd/delicious-pepperoni-pizza-culinary-delight_632498-24206.jpg?w=740' },
+      { name: 'Lasagna', img: 'https://images.unsplash.com/photo-1551183053-bf91a1d81141?w=500' },
+      { name: 'Carbonara', img: 'https://images.unsplash.com/photo-1612874742237-6526221588e3?w=500' },
+      { name: 'Risotto', img: 'https://images.unsplash.com/photo-1476124369491-e7addf5db371?w=500' },
+      { name: 'Eggplant Parm', img: 'https://images.unsplash.com/photo-1625938146369-adc83368bca7?w=500' },
+      { name: 'Gelato', img: 'https://images.unsplash.com/photo-1567206563064-6f60f40a2b57?w=500' }
+  ]},
+  { name: "Mexican", icon: "🌮", items: [
+      { name: 'Tacos', img: 'https://images.unsplash.com/photo-1552332386-f8dd00dc2f85?w=500' },
+      { name: 'Burrito', img: 'https://images.unsplash.com/photo-1626700051175-656fc74e0b63?w=500' },
+      { name: 'Quesadilla', img: 'https://images.unsplash.com/photo-1599974590225-217ec63a73ff?w=500' },
+      { name: 'Enchiladas', img: 'https://images.unsplash.com/photo-1534352956239-0406bd582373?w=500' },
+      { name: 'Guacamole', img: 'https://images.unsplash.com/photo-1547058881-80bbbb2fcbf7?w=500' },
+      { name: 'Chilaquiles', img: 'https://images.unsplash.com/photo-1644243209805-4f3df9f68804?w=500' }
+  ]},
+  { name: "American", icon: "🍔", items: [
+      { name: 'Cheeseburger', img: 'https://images.unsplash.com/photo-1568901346375-23c9450c58cd?w=500' },
+      { name: 'Buffalo Wings', img: 'https://images.unsplash.com/photo-1527477396000-e27163b481c2?w=500' },
+      { name: 'Mac & Cheese', img: 'https://images.unsplash.com/photo-1543339308-43e59d6b73a6?w=500' },
+      { name: 'BBQ Brisket', img: 'https://images.unsplash.com/photo-1588347818036-558601350947?w=500' },
+      { name: 'Philly Steak', img: 'https://images.unsplash.com/photo-1529193591184-b1d58069ecdd?w=500' },
+      { name: 'Apple Pie', img: 'https://images.unsplash.com/photo-1568571780765-9276ac8b75a2?w=500' }
+  ]},
+  { name: "Chinese", icon: "🥢", items: [
+      { name: 'Dim Sum', img: 'https://images.unsplash.com/photo-1496116218417-1a781b1c416c?w=500' },
+      { name: 'Kung Pao', img: 'https://images.unsplash.com/photo-1525755662778-989d0524087e?w=500' },
+      { name: 'Peking Duck', img: 'https://images.unsplash.com/photo-1512058564366-18510be2db19?w=500' },
+      { name: 'Chow Mein', img: 'https://images.unsplash.com/photo-1585032226651-759b368d7246?w=500' },
+      { name: 'Mapo Tofu', img: 'https://images.unsplash.com/photo-1541696432-82c6da8ce7bf?w=500' },
+      { name: 'Spring Rolls', img: 'https://images.unsplash.com/photo-1606331132800-473d9ff020a8?w=500' }
+  ]},
+  { name: "French", icon: "🥐", items: [
+      { name: 'Ratatouille', img: 'https://images.unsplash.com/photo-1572453800999-e8d2d1589b7c?w=500' },
+      { name: 'Braised Stew', img: 'https://images.unsplash.com/photo-1604908176997-125f25cc6f3d?w=500' },
+      { name: 'Quiche', img: 'https://images.unsplash.com/photo-1626078299034-9c8a9ed51740?w=500' },
+      { name: 'Croissants', img: 'https://images.unsplash.com/photo-1555507036-ab1f4038808a?w=500' },
+      { name: 'Onion Soup', img: 'https://images.unsplash.com/photo-1511910849309-0dffb8c85146?w=500' },
+      { name: 'Steak Frites', img: 'https://images.unsplash.com/photo-1600891964092-4316c288032e?w=500' }
+  ]},
+  { name: "Japanese", icon: "🍣", items: [
+      { name: 'Sushi', img: 'https://images.unsplash.com/photo-1579871494447-9811cf80d66c?w=500' },
+      { name: 'Ramen', img: 'https://images.unsplash.com/photo-1557872245-741f4c666055?w=500' },
+      { name: 'Tempura', img: 'https://images.unsplash.com/photo-1615361413100-d1b410c5c761?w=500' },
+      { name: 'Gyoza', img: 'https://images.unsplash.com/photo-1541696497-3958a3554ad3?w=500' },
+      { name: 'Tonkatsu', img: 'https://images.unsplash.com/photo-1627974351651-7f8e815616e1?w=500' },
+      { name: 'Yakitori', img: 'https://images.unsplash.com/photo-1632768571442-999333939611?w=500' }
+  ]},
+  { name: "Middle Eastern", icon: "🥙", items: [
+      { name: 'Hummus', img: 'https://images.unsplash.com/photo-1577906030551-59758a512461?w=500' },
+      { name: 'Falafel', img: 'https://images.unsplash.com/photo-1593001874117-c99c5ed9918a?w=500' },
+      { name: 'Shawarma', img: 'https://images.unsplash.com/photo-1561651823-34feb02250e4?w=500' },
+      { name: 'Kebab', img: 'https://images.unsplash.com/photo-1603360946369-dc9bb0a5810f?w=500' },
+      { name: 'Baklava', img: 'https://images.unsplash.com/photo-1519676867240-f03562e64548?w=500' },
+      { name: 'Tabbouleh', img: 'https://images.unsplash.com/photo-1540420773420-3366772f4999?w=500' }
+  ]}
 ];
 
-let selected = items[0];
+let currentCategory = categories[0];
+let selectedItem = currentCategory.items[0];
 let curA = 0, curB = 0;
-let placedNodes = []; // Store coordinates to avoid overlap
+let placedNodes = [];
 const world = document.getElementById('world');
 
 // Camera Setup
 navigator.mediaDevices.getUserMedia({ video: { facingMode: "environment" } })
   .then(s => document.getElementById('camera').srcObject = s);
 
-// Build Menu
-const menuCont = document.getElementById('menu');
-items.forEach((item, i) => {
-  const c = document.createElement('div');
-  c.className = `card ${i === 0 ? 'active' : ''}`;
-  c.innerHTML = item.name;
-  c.onclick = (e) => {
-    e.stopPropagation();
-    document.querySelectorAll('.card').forEach(x => x.classList.remove('active'));
-    c.classList.add('active');
-    selected = item;
-  };
-  menuCont.appendChild(c);
-});
+// Initial Build
+buildCategories();
+buildMenu();
+
+function buildCategories() {
+  const bar = document.getElementById('catBar');
+  categories.forEach((cat, i) => {
+    const btn = document.createElement('div');
+    btn.className = `cat-btn ${i === 0 ? 'active' : ''}`;
+    btn.innerHTML = `${cat.icon} ${cat.name}`;
+    btn.onclick = () => {
+      document.querySelectorAll('.cat-btn').forEach(b => b.classList.remove('active'));
+      btn.classList.add('active');
+      currentCategory = cat;
+      buildMenu();
+    };
+    bar.appendChild(btn);
+  });
+}
+
+function buildMenu() {
+  const menu = document.getElementById('menu');
+  menu.innerHTML = '';
+  currentCategory.items.forEach((item, i) => {
+    const c = document.createElement('div');
+    c.className = `card ${i === 0 ? 'active' : ''}`;
+    c.innerHTML = `<div style="font-size:24px">${currentCategory.icon}</div><div class="card-name">${item.name}</div>`;
+    c.onclick = (e) => {
+      e.stopPropagation();
+      document.querySelectorAll('.card').forEach(x => x.classList.remove('active'));
+      c.classList.add('active');
+      selectedItem = item;
+    };
+    menu.appendChild(c);
+  });
+  selectedItem = currentCategory.items[0];
+}
 
 // Device Tracking
 window.addEventListener('deviceorientation', (e) => {
@@ -118,39 +237,45 @@ window.addEventListener('deviceorientation', (e) => {
   world.style.transform = `rotateX(${curB - 90}deg) rotateZ(${-curA}deg)`;
 });
 
-// Click to Drop (with Collision Detection)
+// Click to Drop
 window.addEventListener('click', (e) => {
   if (e.target.closest('#ui') || e.target.id === 'reset-btn') return;
 
   let targetA = curA;
   let targetB = curB;
-  let distance = 800;
+  let distance = 850;
 
-  // OVERLAP FIX: Check if we are too close to a previous dish
+  // SPATIAL COLLISION AVOIDANCE
   placedNodes.forEach(node => {
     const angleDiff = Math.abs(node.a - targetA);
-    if (angleDiff < 15) { // If within 15 degrees
-      targetA += 20; // Nudge it 20 degrees to the right
-    }
+    if (angleDiff < 18) { targetA += 22; }
   });
 
   placedNodes.push({a: targetA, b: targetB});
 
   const node = document.createElement('div');
   node.className = 'spatial-node';
-  
-  // Use the specific locked coordinates
   node.style.transform = `rotateZ(${targetA}deg) rotateX(${-(targetB - 90)}deg) translateZ(${distance}px)`;
 
   const img = document.createElement('img');
-  img.src = selected.img;
+  img.src = selectedItem.img;
   img.className = 'food-img';
 
+  const label = document.createElement('div');
+  label.className = 'label-3d';
+  label.textContent = selectedItem.name;
+
   node.appendChild(img);
+  node.appendChild(label);
   world.appendChild(node);
   
   if(navigator.vibrate) navigator.vibrate(20);
 });
+
+function clearAll() {
+  world.innerHTML = '';
+  placedNodes = [];
+}
 </script>
 </body>
 </html>
