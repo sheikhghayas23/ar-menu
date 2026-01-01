@@ -3,179 +3,172 @@
 <head>
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no"/>
-<title>Spatial Pro AR - Fixed Overlap</title>
+<title>Pro AR Spatial Menu v3.0</title>
 
 <style>
-  :root { --accent: #00ffcc; --glass: rgba(0,0,0,0.8); }
-  body { margin: 0; overflow: hidden; font-family: -apple-system, sans-serif; background: #000; }
+  :root { --accent: #00ffcc; --ui-bg: rgba(0, 0, 0, 0.9); }
+  body { margin: 0; overflow: hidden; font-family: -apple-system, system-ui, sans-serif; background: #000; color: #fff; }
   
   video { position: fixed; inset: 0; width: 100vw; height: 100vh; object-fit: cover; z-index: 1; }
 
-  /* 3D Stage */
-  #viewport {
-    position: fixed; inset: 0; z-index: 2;
-    perspective: 1500px; /* High perspective for depth */
-    pointer-events: none;
-  }
+  /* 3D Scene */
+  #viewport { position: fixed; inset: 0; z-index: 2; perspective: 2000px; pointer-events: none; }
+  #world { position: absolute; width: 100%; height: 100%; transform-style: preserve-3d; transition: transform 0.1s linear; }
 
-  #world {
-    position: absolute; width: 100%; height: 100%;
-    transform-style: preserve-3d;
-    will-change: transform;
-  }
-
-  /* Food Anchor */
-  .food-node {
-    position: absolute;
-    left: 50%; top: 50%;
+  .spatial-anchor {
+    position: absolute; left: 50%; top: 50%;
     transform-style: preserve-3d;
     display: flex; flex-direction: column; align-items: center;
   }
 
-  .dish {
-    width: 250px;
-    filter: drop-shadow(0 25px 40px rgba(0,0,0,0.8));
-    animation: spawn 0.6s cubic-bezier(0.17, 0.88, 0.32, 1.2);
-    border-radius: 50%;
+  .dish-plate {
+    width: 280px; filter: drop-shadow(0 30px 50px rgba(0,0,0,0.9));
+    animation: popScale 0.5s cubic-bezier(0.34, 1.56, 0.64, 1);
+    border-radius: 50%; border: 4px solid rgba(255,255,255,0.1);
   }
 
-  /* Shadow to give ground feeling */
-  .shadow {
-    width: 200px; height: 50px;
-    background: radial-gradient(ellipse at center, rgba(0,0,0,0.5) 0%, transparent 75%);
-    transform: rotateX(90deg) translateZ(-30px);
-    margin-top: -30px;
+  @keyframes popScale {
+    0% { transform: scale(0) translateZ(-500px); opacity: 0; }
+    100% { transform: scale(1) translateZ(0); opacity: 1; }
   }
 
-  @keyframes spawn {
-    0% { transform: translateZ(-500px) scale(0); opacity: 0; }
-    100% { transform: translateZ(0) scale(1); opacity: 1; }
-  }
-
-  /* iPhone Style Reticle */
+  /* Measurement HUD */
   #reticle {
     position: fixed; left: 50%; top: 50%;
     transform: translate(-50%, -50%);
-    width: 32px; height: 32px;
-    border: 2px solid white; border-radius: 50%;
+    width: 40px; height: 40px;
+    border: 1.5px solid white; border-radius: 50%;
     z-index: 5; pointer-events: none;
+    display: flex; align-items: center; justify-content: center;
   }
-  #reticle::after { content: ''; position: absolute; inset: 12px; background: white; border-radius: 50%; }
+  #reticle::after { content: ''; width: 6px; height: 6px; background: var(--accent); border-radius: 50%; }
 
-  /* UI */
-  #ui {
+  /* UI Controls */
+  #ui-panel {
     position: fixed; bottom: 0; width: 100%;
-    background: linear-gradient(to top, black 80%, transparent);
-    z-index: 10; padding: 20px 0 50px;
+    background: linear-gradient(to top, #000 70%, transparent);
+    z-index: 10; padding-bottom: env(safe-area-inset-bottom);
   }
 
-  .carousel { display: flex; gap: 12px; overflow-x: auto; padding: 0 20px; scrollbar-width: none; }
+  .carousel { display: flex; gap: 15px; overflow-x: auto; padding: 20px; scrollbar-width: none; }
   .carousel::-webkit-scrollbar { display: none; }
 
-  .card {
-    min-width: 90px; padding: 15px;
-    background: var(--glass); border: 1px solid rgba(255,255,255,0.2);
-    border-radius: 15px; color: white; text-align: center;
-    transition: 0.2s;
+  .food-btn {
+    min-width: 100px; padding: 15px; background: rgba(255,255,255,0.08);
+    border-radius: 20px; border: 1px solid rgba(255,255,255,0.15);
+    backdrop-filter: blur(15px); text-align: center; transition: 0.3s;
   }
-  .card.active { border-color: var(--accent); background: var(--accent); color: black; }
+  .food-btn.active { background: var(--accent); color: #000; border-color: #fff; transform: translateY(-5px); }
+
+  .slider-box { padding: 0 25px; display: flex; align-items: center; gap: 15px; font-size: 11px; letter-spacing: 1px; }
+  input[type=range] { flex: 1; accent-color: var(--accent); }
+
+  #reset-btn {
+    position: fixed; top: 20px; right: 20px; z-index: 11;
+    background: rgba(255,50,50,0.8); border: none; padding: 10px 15px;
+    border-radius: 12px; color: white; font-weight: bold; font-size: 12px;
+  }
 </style>
 </head>
 <body>
 
 <video id="camera" autoplay playsinline></video>
+<button id="reset-btn" onclick="clearSpace()">RESET ROOM</button>
 <div id="reticle"></div>
 
 <div id="viewport">
   <div id="world"></div>
 </div>
 
-<div id="ui">
+<div id="ui-panel">
+  <div class="slider-box">
+    <span>NEAR</span>
+    <input type="range" id="distRange" min="500" max="1500" value="800">
+    <span>FAR</span>
+  </div>
+  
   <div class="carousel" id="menu"></div>
-  <div style="color:white; text-align:center; font-size:12px; margin-top:15px; opacity:0.6;">
-    POINT AND TAP TO PLACE (DISHES WILL NOT OVERLAP)
+  <div style="text-align:center; font-size:10px; color:rgba(255,255,255,0.4); margin-bottom:15px;">
+    MOVE PHONE TO DIFFERENT SPOTS TO ARRANGE YOUR TABLE
   </div>
 </div>
 
 <script>
-const foods = [
+const menu = [
   { name: 'Biryani', img: 'https://media.istockphoto.com/id/501150349/photo/chicken-biryani-11.jpg?s=612x612&w=0&k=20&c=w6mDnUx8MnH3rnP9bR0VfWRwrODcbTz-6U07o3Zrs4o=' },
   { name: 'Pizza', img: 'https://img.freepik.com/free-psd/delicious-pepperoni-pizza-culinary-delight_632498-24206.jpg?w=740' },
-  { name: 'Tacos', img: 'https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcTD-CUOhD5WqTgJIVDIjg40XOWKg4cf0rc56w&s' },
-  { name: 'Burger', img: 'https://images.unsplash.com/photo-1568901346375-23c9450c58cd?q=80&w=500' }
+  { name: 'Sushi', img: 'https://images.unsplash.com/photo-1579871494447-9811cf80d66c?q=80&w=500' },
+  { name: 'Tacos', img: 'https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcTD-CUOhD5WqTgJIVDIjg40XOWKg4cf0rc56w&s' }
 ];
 
-let selected = foods[0];
+let selected = menu[0];
+let currentA = 0, currentB = 0;
 const world = document.getElementById('world');
-let gyro = { a: 0, b: 0 };
-let placedAngles = []; // Store angles to prevent overlap
+const distInput = document.getElementById('distRange');
 
-// Camera
+// Permissions & Camera
 navigator.mediaDevices.getUserMedia({ video: { facingMode: "environment" } })
   .then(s => document.getElementById('camera').srcObject = s);
 
-// UI Menu
-const menu = document.getElementById('menu');
-foods.forEach((f, i) => {
-  const c = document.createElement('div');
-  c.className = `card ${i===0?'active':''}`;
-  c.innerHTML = `<div>${f.name}</div>`;
-  c.onclick = (e) => {
+// Build Premium Menu
+const menuCont = document.getElementById('menu');
+menu.forEach((item, i) => {
+  const btn = document.createElement('div');
+  btn.className = `food-btn ${i === 0 ? 'active' : ''}`;
+  btn.innerHTML = `<div>${item.name}</div>`;
+  btn.onclick = (e) => {
     e.stopPropagation();
-    document.querySelectorAll('.card').forEach(x => x.classList.remove('active'));
-    c.classList.add('active');
-    selected = f;
+    document.querySelectorAll('.food-btn').forEach(b => b.classList.remove('active'));
+    btn.classList.add('active');
+    selected = item;
+    if(navigator.vibrate) navigator.vibrate(10);
   };
-  menu.appendChild(c);
+  menuCont.appendChild(btn);
 });
 
-// Device Orientation (Tracking the Room)
+// Spatial Tracking
 window.addEventListener('deviceorientation', (e) => {
-  gyro.a = e.alpha || 0; // Compass
-  gyro.b = e.beta || 0;  // Tilt
-  
-  // Update the 3D world rotation
-  world.style.transform = `rotateX(${gyro.b - 90}deg) rotateZ(${-gyro.a}deg)`;
+  currentA = e.alpha || 0;
+  currentB = e.beta || 0;
+  // Apply inverse rotation to the world container
+  world.style.transform = `rotateX(${currentB - 90}deg) rotateZ(${-currentA}deg)`;
 });
 
-// Place Logic
+// Drop & Collision Logic
 window.addEventListener('click', (e) => {
-  if (e.target.closest('#ui')) return;
+  if (e.target.closest('#ui-panel') || e.target.id === 'reset-btn') return;
 
-  // OVERLAP CHECK: If we already placed something within 15 degrees of this spot, nudge it
-  let finalAlpha = gyro.a;
-  let finalBeta = gyro.b;
+  const anchor = document.createElement('div');
+  anchor.className = 'spatial-anchor';
 
-  placedAngles.forEach(pos => {
-    if (Math.abs(pos.a - finalAlpha) < 15 && Math.abs(pos.b - finalBeta) < 15) {
-      finalAlpha += 20; // Nudge it to the side if it's too close
-    }
-  });
+  // "PRO FEATURE": Randomize slightly to prevent perfect stacking
+  const jitterA = (Math.random() - 0.5) * 5;
+  const jitterB = (Math.random() - 0.5) * 5;
+  
+  const snapA = currentA + jitterA;
+  const snapB = currentB + jitterB;
+  const distance = distInput.value;
 
-  placedAngles.push({a: finalAlpha, b: finalBeta});
-
-  const node = document.createElement('div');
-  node.className = 'food-node';
-
-  // INCREASED DISTANCE: translateZ(900px) puts it further away in the room
-  const distance = 900; 
-
-  // Capture the spatial coordinates
-  node.style.transform = `rotateZ(${finalAlpha}deg) rotateX(${-(finalBeta - 90)}deg) translateZ(${distance}px)`;
+  // Complex 3D Transform: Points the anchor in the direction you are looking
+  anchor.style.transform = `
+    rotateZ(${snapA}deg) 
+    rotateX(${-(snapB - 90)}deg) 
+    translateZ(${distance}px)
+  `;
 
   const img = document.createElement('img');
   img.src = selected.img;
-  img.className = 'dish';
+  img.className = 'dish-plate';
 
-  const shadow = document.createElement('div');
-  shadow.className = 'shadow';
+  anchor.appendChild(img);
+  world.appendChild(anchor);
 
-  node.appendChild(img);
-  node.appendChild(shadow);
-  world.appendChild(node);
-
-  if(navigator.vibrate) navigator.vibrate(25);
+  if(navigator.vibrate) navigator.vibrate([30, 10, 30]);
 });
+
+function clearSpace() {
+  world.innerHTML = '';
+}
 </script>
 </body>
 </html>
