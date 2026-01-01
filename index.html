@@ -3,84 +3,79 @@
 <head>
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no"/>
-<title>Spatial AR Pro - No Overlap</title>
+<title>Spatial AR Dropper</title>
 
 <style>
-  :root { --accent: #00ffcc; --glass: rgba(15, 15, 15, 0.9); }
-  body { margin: 0; overflow: hidden; font-family: -apple-system, system-ui; background: #000; color: white; }
+  :root { --accent: #00ffcc; }
+  body { margin: 0; overflow: hidden; font-family: -apple-system, sans-serif; background: #000; }
   
   video { position: fixed; inset: 0; width: 100vw; height: 100vh; object-fit: cover; z-index: 1; }
 
-  /* 3D Scene Container */
-  #viewport {
+  /* 3D World Scene */
+  #scene-container {
     position: fixed;
     inset: 0;
     z-index: 2;
-    perspective: 1000px;
-    overflow: hidden;
+    perspective: 1200px;
+    pointer-events: none;
   }
 
-  #ar-world {
+  #world {
     position: absolute;
-    width: 100%;
-    height: 100%;
+    width: 100%; height: 100%;
     transform-style: preserve-3d;
+    will-change: transform;
   }
 
-  .spatial-node {
+  /* The actual food container */
+  .anchor {
     position: absolute;
-    left: 50%;
-    top: 50%;
+    left: 50%; top: 50%;
     transform-style: preserve-3d;
     display: flex;
     flex-direction: column;
     align-items: center;
   }
 
-  .placed-dish {
-    filter: drop-shadow(0 20px 30px rgba(0,0,0,0.8));
-    animation: spawn 0.5s cubic-bezier(0.17, 0.88, 0.32, 1.28);
+  .dish-img {
+    filter: drop-shadow(0 15px 25px rgba(0,0,0,0.6));
+    animation: dropIn 0.4s ease-out;
+    border-radius: 50%; /* Makes square images look like plates */
   }
 
-  .dish-shadow {
-    width: 160px; height: 40px;
-    background: radial-gradient(ellipse at center, rgba(0,0,0,0.6) 0%, transparent 80%);
-    transform: rotateX(90deg) translateZ(-20px);
-    margin-top: -20px;
+  @keyframes dropIn {
+    0% { transform: translateZ(-200px) scale(0); opacity: 0; }
+    100% { transform: translateZ(0) scale(1); opacity: 1; }
   }
 
-  @keyframes spawn {
-    from { opacity: 0; transform: scale(0.5) translateZ(-100px); }
-    to { opacity: 1; transform: scale(1) translateZ(0); }
-  }
-
+  /* Target Reticle */
   #reticle {
     position: fixed; left: 50%; top: 50%;
     transform: translate(-50%, -50%);
     width: 30px; height: 30px;
     border: 2px solid white; border-radius: 50%;
     z-index: 5; pointer-events: none;
+    box-shadow: 0 0 10px rgba(0,0,0,0.5);
   }
+  #reticle::after { content: ''; position: absolute; top: 50%; left: 50%; width: 4px; height: 4px; background: white; border-radius: 50%; transform: translate(-50%, -50%); }
 
-  #ui-bottom {
+  /* Bottom Menu */
+  #ui {
     position: fixed; bottom: 0; width: 100%;
-    background: linear-gradient(to top, black, transparent);
+    background: linear-gradient(to top, rgba(0,0,0,1), transparent);
     z-index: 10; padding: 20px 0 40px;
   }
 
-  .carousel { display: flex; gap: 12px; overflow-x: auto; padding: 0 20px; scrollbar-width: none; }
+  .carousel { display: flex; gap: 15px; overflow-x: auto; padding: 0 20px; scrollbar-width: none; }
   .carousel::-webkit-scrollbar { display: none; }
 
-  .food-card {
-    min-width: 90px; padding: 12px;
-    background: var(--glass); border-radius: 15px;
-    border: 1px solid rgba(255,255,255,0.1);
-    text-align: center; transition: 0.3s;
+  .card {
+    min-width: 90px; padding: 15px;
+    background: rgba(255,255,255,0.1); border-radius: 20px;
+    backdrop-filter: blur(15px); border: 1px solid rgba(255,255,255,0.2);
+    color: white; text-align: center; font-weight: bold;
   }
-  .food-card.active { border-color: var(--accent); transform: scale(1.05); }
-
-  #controls { padding: 15px 20px; display: flex; align-items: center; gap: 10px; font-size: 10px; }
-  input[type=range] { flex: 1; accent-color: var(--accent); }
+  .card.active { background: var(--accent); color: black; border-color: white; }
 </style>
 </head>
 <body>
@@ -88,91 +83,88 @@
 <video id="camera" autoplay playsinline></video>
 <div id="reticle"></div>
 
-<div id="viewport">
-  <div id="ar-world"></div>
+<div id="scene-container">
+  <div id="world"></div>
 </div>
 
-<div id="ui-bottom">
-  <div id="controls">
-    <span>SCALE</span>
-    <input type="range" id="sizeSlider" min="120" max="350" value="200">
-  </div>
+<div id="ui">
   <div class="carousel" id="menu"></div>
+  <p style="color: white; text-align: center; font-size: 10px; margin-top: 20px; opacity: 0.7;">
+    POINT AT A SPOT AND TAP TO DROP FOOD
+  </p>
 </div>
 
 <script>
-const items = [
+const foodList = [
   { name: 'Biryani', img: 'https://media.istockphoto.com/id/501150349/photo/chicken-biryani-11.jpg?s=612x612&w=0&k=20&c=w6mDnUx8MnH3rnP9bR0VfWRwrODcbTz-6U07o3Zrs4o=' },
   { name: 'Pizza', img: 'https://img.freepik.com/free-psd/delicious-pepperoni-pizza-culinary-delight_632498-24206.jpg?w=740' },
-  { name: 'Taco', img: 'https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcTD-CUOhD5WqTgJIVDIjg40XOWKg4cf0rc56w&s' },
-  { name: 'Korma', img: 'https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcT0bXMJFe78VrtqCkakaMrEBLMZ1_TskQUf-g&s' }
+  { name: 'Burger', img: 'https://images.unsplash.com/photo-1568901346375-23c9450c58cd?q=80&w=500' },
+  { name: 'Tacos', img: 'https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcTD-CUOhD5WqTgJIVDIjg40XOWKg4cf0rc56w&s' }
 ];
 
-let selected = items[0];
-let currentBeta = 0, currentGamma = 0;
-const world = document.getElementById('ar-world');
+let selectedFood = foodList[0];
+const world = document.getElementById('world');
+let gyro = { alpha: 0, beta: 0, gamma: 0 };
 
-// Camera Init
+// 1. Get Camera
 navigator.mediaDevices.getUserMedia({ video: { facingMode: "environment" } })
   .then(s => document.getElementById('camera').srcObject = s);
 
-// Build UI
+// 2. Build Menu
 const menu = document.getElementById('menu');
-items.forEach(item => {
+foodList.forEach((item, i) => {
   const card = document.createElement('div');
-  card.className = 'food-card';
+  card.className = `card ${i === 0 ? 'active' : ''}`;
   card.innerHTML = `<div>${item.name}</div>`;
   card.onclick = (e) => {
     e.stopPropagation();
-    document.querySelectorAll('.food-card').forEach(c => c.classList.remove('active'));
+    document.querySelectorAll('.card').forEach(c => c.classList.remove('active'));
     card.classList.add('active');
-    selected = item;
+    selectedFood = item;
   };
   menu.appendChild(card);
 });
-document.querySelector('.food-card').classList.add('active');
 
-// The Secret Sauce: Gyroscope tracking
+// 3. Track Phone Orientation (The 3D Room)
 window.addEventListener('deviceorientation', (e) => {
-  currentBeta = e.beta; // Forward/Back tilt
-  currentGamma = e.gamma; // Left/Right tilt
+  // Alpha = Compass, Beta = Tilt, Gamma = Roll
+  gyro.alpha = e.alpha || 0;
+  gyro.beta = e.beta || 0;
+  gyro.gamma = e.gamma || 0;
   
-  // Inverse the world so it feels static
-  world.style.transform = `rotateX(${-currentBeta}deg) rotateY(${-currentGamma}deg)`;
+  // We rotate the ENTIRE world opposite to our phone move
+  // This makes the objects feel "stuck" in the room
+  world.style.transform = `rotateX(${gyro.beta - 90}deg) rotateZ(${-gyro.alpha}deg)`;
 });
 
-// Spatial Placement Logic
+// 4. Drop Dish in Space
 window.addEventListener('click', (e) => {
-  if (e.target.closest('#ui-bottom')) return;
+  if (e.target.closest('#ui')) return;
 
-  const node = document.createElement('div');
-  node.className = 'spatial-node';
+  const anchor = document.createElement('div');
+  anchor.className = 'anchor';
 
-  // We lock the node to the CURRENT orientation of the phone
-  // By using the inverse of the current tilt, it stays at that "compass" point
-  const xRotation = currentBeta;
-  const yRotation = currentGamma;
+  // We save the CURRENT orientation so it stays in this spot
+  const dropAlpha = gyro.alpha;
+  const dropBeta = gyro.beta;
 
-  // We push the food away from the camera into the distance
-  const distance = -800; 
-
-  // Create the 3D position
-  // We use translateZ to push it into the room and rotateY/X to place it in the specific spot you pointed at
-  node.style.transform = `rotateY(${yRotation}deg) rotateX(${-xRotation}deg) translateZ(${distance}px)`;
+  // Position logic: 
+  // We use Z-translate to put it "forward"
+  // We use the recorded Alpha/Beta to "offset" its position in the world container
+  const distance = 600; // How far in front of you the food appears
+  
+  // This math "un-rotates" the dish so it stays at the compass point you clicked
+  anchor.style.transform = `rotateZ(${dropAlpha}deg) rotateX(${-(dropBeta - 90)}deg) translateZ(${distance}px)`;
 
   const img = document.createElement('img');
-  img.src = selected.img;
-  img.className = 'placed-dish';
-  img.style.width = document.getElementById('sizeSlider').value + 'px';
+  img.src = selectedFood.img;
+  img.className = 'dish-img';
+  img.style.width = '200px';
 
-  const shadow = document.createElement('div');
-  shadow.className = 'dish-shadow';
+  anchor.appendChild(img);
+  world.appendChild(anchor);
 
-  node.appendChild(img);
-  node.appendChild(shadow);
-  world.appendChild(node);
-
-  if(navigator.vibrate) navigator.vibrate(15);
+  if(navigator.vibrate) navigator.vibrate(20);
 });
 </script>
 </body>
