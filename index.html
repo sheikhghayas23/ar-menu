@@ -3,202 +3,224 @@
 <head>
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no"/>
-<title>AR Spatial Feast - Ultra Edition</title>
+<title>AR Spatial Feast: Ultimate Edition</title>
 
 <style>
   :root { 
     --accent: #00ffcc; 
-    --glass: rgba(0,0,0,0.8);
-    --warning: #ff4444;
-    --gold: #ffd700;
+    --glass: rgba(10, 10, 10, 0.85);
+    --gold: #ffcc00;
   }
 
-  body { margin: 0; overflow: hidden; font-family: -apple-system, sans-serif; background: #000; color: #fff; }
+  body { margin: 0; overflow: hidden; font-family: 'Segoe UI', sans-serif; background: #000; color: #fff; touch-action: none; }
   video { position: fixed; inset: 0; width: 100vw; height: 100vh; object-fit: cover; z-index: 1; }
 
-  /* 3D Scene */
-  #viewport { position: fixed; inset: 0; z-index: 2; perspective: 1200px; pointer-events: none; }
+  /* 3D Core */
+  #viewport { position: fixed; inset: 0; z-index: 2; perspective: 1000px; pointer-events: none; }
   #world { position: absolute; width: 100%; height: 100%; transform-style: preserve-3d; }
 
   .spatial-node {
     position: absolute; left: 50%; top: 50%;
-    transform-style: preserve-3d; display: flex; flex-direction: column; align-items: center;
-    pointer-events: auto;
+    transform-style: preserve-3d; pointer-events: auto;
   }
 
-  /* Dish Visuals */
+  /* Dish & Physics */
   .dish-wrapper { 
-    position: relative; transform-style: preserve-3d; 
-    transform: rotateX(-30deg); transition: transform 0.3s;
+    transform-style: preserve-3d; 
+    transform: rotateX(-30deg); 
+    transition: transform 0.2s;
+    display: flex; flex-direction: column; align-items: center;
   }
-  .dish-wrapper:active { transform: rotateX(-30deg) scale(0.9); }
-
+  
   .food-img {
     width: 250px; height: 250px; object-fit: cover;
-    border-radius: 50%; border: 6px solid #fff;
-    box-shadow: 0 30px 60px rgba(0,0,0,0.7);
-    animation: dishGlow 3s infinite alternate;
+    border-radius: 50%; border: 8px solid #fff;
+    box-shadow: 0 40px 80px rgba(0,0,0,0.8);
+    animation: hotGlow 3s infinite alternate ease-in-out;
   }
 
-  @keyframes dishGlow {
+  @keyframes hotGlow {
     from { filter: brightness(1) drop-shadow(0 0 5px var(--accent)); }
-    to { filter: brightness(1.2) drop-shadow(0 0 20px var(--accent)); }
+    to { filter: brightness(1.2) drop-shadow(0 0 25px var(--accent)); }
   }
 
-  /* Contact Shadow */
-  .contact-shadow {
-    position: absolute; width: 200px; height: 40px;
-    background: radial-gradient(ellipse at center, rgba(0,0,0,0.8) 0%, transparent 70%);
-    transform: rotateX(90deg) translateZ(-130px); z-index: -1;
+  /* Grounding & Steam */
+  .ground-shadow {
+    position: absolute; width: 220px; height: 40px;
+    background: radial-gradient(ellipse, rgba(0,0,0,0.7) 0%, transparent 70%);
+    transform: rotateX(90deg) translateZ(-130px);
   }
 
-  /* Improved Steam */
-  .steam-cloud {
-    position: absolute; bottom: 0; left: 50%; width: 30px; height: 30px;
-    background: rgba(255,255,255,0.3); filter: blur(12px); border-radius: 50%;
-    animation: steamRise 2s infinite ease-out; opacity: 0;
+  .steam-particle {
+    position: absolute; bottom: 80px; width: 30px; height: 30px;
+    background: rgba(255,255,255,0.2); filter: blur(15px); border-radius: 50%;
+    animation: rise 2.5s infinite ease-out; opacity: 0;
   }
-  @keyframes steamRise {
+
+  @keyframes rise {
     0% { transform: translateY(0) scale(1); opacity: 0; }
-    40% { opacity: 0.6; }
-    100% { transform: translateY(-120px) scale(4); opacity: 0; }
+    50% { opacity: 0.5; }
+    100% { transform: translateY(-150px) scale(4); opacity: 0; }
   }
 
-  /* UI Components */
-  .header {
+  /* Pro UI Panels */
+  .top-ui {
     position: fixed; top: 20px; width: 90%; left: 5%;
-    display: flex; justify-content: space-between; align-items: center; z-index: 100;
-    transition: opacity 0.3s;
-  }
-  .btn-icon {
-    background: var(--glass); border: 1px solid rgba(255,255,255,0.2);
-    color: white; padding: 12px; border-radius: 50%; font-size: 20px;
-    backdrop-filter: blur(10px); width: 50px; height: 50px;
-  }
-  .bill-pill { background: var(--accent); color: #000; padding: 12px 20px; border-radius: 30px; font-weight: 900; }
-
-  #ui {
-    position: fixed; bottom: 0; width: 100%; z-index: 10;
-    background: linear-gradient(to top, #000 90%, transparent);
-    padding-bottom: 40px; transition: transform 0.4s;
+    display: flex; justify-content: space-between; z-index: 100;
   }
 
-  .carousel { display: flex; gap: 15px; overflow-x: auto; padding: 20px; scrollbar-width: none; }
-  .card {
-    min-width: 100px; padding: 15px; background: rgba(255,255,255,0.1);
-    border-radius: 20px; text-align: center; border: 1px solid transparent;
-    backdrop-filter: blur(10px);
-  }
-  .card.active { border-color: var(--accent); background: rgba(0,255,204,0.1); }
-
-  .checkout-btn {
-    background: var(--gold); color: black; border: none; width: 90%;
-    margin-left: 5%; padding: 15px; border-radius: 15px; font-weight: 800;
+  .pill {
+    background: var(--glass); padding: 10px 20px; border-radius: 50px;
+    backdrop-filter: blur(15px); border: 1px solid rgba(255,255,255,0.1);
+    font-weight: bold; display: flex; align-items: center; gap: 8px;
   }
 
-  /* 3D Floating Label */
-  .label-3d {
-    background: var(--glass); padding: 5px 15px; border-radius: 20px;
-    margin-top: 10px; border: 1px solid var(--accent); font-size: 12px;
-    animation: float 2.5s infinite ease-in-out;
+  #bottom-ui {
+    position: fixed; bottom: 0; width: 100%; z-index: 100;
+    background: linear-gradient(to top, #000 80%, transparent);
+    padding: 20px 0 40px; transition: transform 0.5s cubic-bezier(0.19, 1, 0.22, 1);
   }
-  @keyframes float { 0%,100% {transform:translateY(0)} 50% {transform:translateY(-10px)} }
+
+  .carousel { display: flex; gap: 15px; overflow-x: auto; padding: 0 20px; scrollbar-width: none; }
+  .carousel::-webkit-scrollbar { display: none; }
+
+  .item-card {
+    min-width: 120px; background: rgba(255,255,255,0.05);
+    border-radius: 25px; padding: 15px; text-align: center;
+    border: 2px solid transparent; transition: 0.3s;
+  }
+  .item-card.selected { border-color: var(--accent); background: rgba(0,255,204,0.1); transform: scale(1.05); }
+
+  .action-bar { display: flex; gap: 10px; padding: 20px; }
+  .btn-main {
+    flex: 1; padding: 15px; border-radius: 15px; border: none;
+    font-weight: 900; letter-spacing: 1px; cursor: pointer;
+  }
+  .btn-order { background: var(--gold); color: #000; }
+  .btn-photo { background: var(--glass); color: #fff; border: 1px solid #fff; }
+
+  /* 3D Label */
+  .label-tag {
+    background: var(--accent); color: #000; padding: 5px 15px;
+    border-radius: 20px; font-size: 12px; font-weight: 900;
+    margin-top: 15px; animation: float 3s infinite ease-in-out;
+  }
+  @keyframes float { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-10px); } }
+
+  .scale-ctrl { position: fixed; right: 20px; top: 50%; transform: translateY(-50%); z-index: 100; display: flex; flex-direction: column; gap: 20px; }
+  .scale-btn { background: var(--glass); color: white; border: 1px solid #fff; width: 45px; height: 45px; border-radius: 50%; font-size: 20px; }
 </style>
 </head>
 <body>
 
 <video id="camera" autoplay playsinline></video>
 
-<div class="header" id="header">
-  <button class="btn-icon" onclick="toggleUI()">📸</button>
-  <div class="bill-pill">$<span id="total-price">0</span></div>
-  <button id="reset-btn" style="background:var(--warning); border:none; color:white; padding:10px; border-radius:10px;" onclick="clearSpace()">CLEAR</button>
+<div class="top-ui">
+  <div class="pill">💰 Total: $<span id="bill">0</span></div>
+  <button onclick="clearAll()" style="background:rgba(255,0,0,0.5); border:none; color:white; padding:10px; border-radius:10px;">RESET</button>
+</div>
+
+<div class="scale-ctrl">
+  <button class="scale-btn" onclick="adjustScale(0.1)">+</button>
+  <button class="scale-btn" onclick="adjustScale(-0.1)">-</button>
 </div>
 
 <div id="viewport"><div id="world"></div></div>
 
-<div id="ui">
-  <div class="carousel" id="menu"></div>
-  <button class="checkout-btn" onclick="checkout()">ORDER VIA WHATSAPP</button>
+<div id="bottom-ui">
+  <div class="carousel" id="menu-items"></div>
+  <div class="action-bar">
+    <button class="btn-main btn-photo" onclick="togglePhoto()">PHOTO MODE</button>
+    <button class="btn-main btn-order" onclick="sendOrder()">PLACE ORDER</button>
+  </div>
 </div>
 
 <script>
-const items = [
+const menu = [
   { name: 'Biryani', price: 15, img: 'https://media.istockphoto.com/id/501150349/photo/chicken-biryani-11.jpg?s=612x612&w=0&k=20&c=w6mDnUx8MnH3rnP9bR0VfWRwrODcbTz-6U07o3Zrs4o=' },
-  { name: 'Pizza', price: 12, img: 'https://images.unsplash.com/photo-1513104890138-7c749659a591?w=500' },
-  { name: 'Burger', price: 10, img: 'https://images.unsplash.com/photo-1568901346375-23c9450c58cd?w=500' },
-  { name: 'Sushi', price: 22, img: 'https://images.unsplash.com/photo-1579871494447-9811cf80d66c?w=500' }
+  { name: 'Sushi', price: 25, img: 'https://images.unsplash.com/photo-1579871494447-9811cf80d66c?w=500' },
+  { name: 'Burger', price: 12, img: 'https://images.unsplash.com/photo-1568901346375-23c9450c58cd?w=500' },
+  { name: 'Pasta', price: 18, img: 'https://images.unsplash.com/photo-1546548970-71785318a17b?w=500' }
 ];
 
-let selected = items[0], total = 0, curA = 0, curB = 0, placed = [];
+let selected = menu[0], totalBill = 0, currentScale = 1;
+let alpha = 0, beta = 0, placedItems = [];
 const world = document.getElementById('world');
-const sfx = new Audio('https://www.soundjay.com/button/sounds/button-30.mp3');
 
-navigator.mediaDevices.getUserMedia({ video: { facingMode: "environment" } }).then(s => document.getElementById('camera').srcObject = s);
+// 1. Setup Camera
+navigator.mediaDevices.getUserMedia({ video: { facingMode: 'environment' } })
+  .then(s => document.getElementById('camera').srcObject = s);
 
-items.forEach((item, i) => {
-  const c = document.createElement('div');
-  c.className = `card ${i===0?'active':''}`;
-  c.innerHTML = `<div>${item.name}</div><div style="color:var(--accent)">$${item.price}</div>`;
-  c.onclick = (e) => {
+// 2. Build Interactive Menu
+const carousel = document.getElementById('menu-items');
+menu.forEach((item, i) => {
+  const card = document.createElement('div');
+  card.className = `item-card ${i === 0 ? 'selected' : ''}`;
+  card.innerHTML = `<img src="${item.img}" style="width:70px;height:70px;border-radius:50%;object-fit:cover;"><div style="font-size:12px;margin-top:8px;">${item.name}</div>`;
+  card.onclick = (e) => {
     e.stopPropagation();
-    document.querySelectorAll('.card').forEach(x => x.classList.remove('active'));
-    c.classList.add('active');
+    document.querySelectorAll('.item-card').forEach(c => c.classList.remove('selected'));
+    card.classList.add('selected');
     selected = item;
   };
-  document.getElementById('menu').appendChild(c);
+  carousel.appendChild(card);
 });
 
+// 3. Sensor Fusion 
 window.addEventListener('deviceorientation', e => {
-  curA = e.alpha || 0; curB = e.beta || 0;
-  world.style.transform = `rotateX(${curB - 90}deg) rotateZ(${-curA}deg)`;
+  alpha = e.alpha || 0;
+  beta = e.beta || 0;
+  world.style.transform = `rotateX(${beta - 90}deg) rotateZ(${-alpha}deg)`;
 });
 
+// 4. Spatial Placement 
 window.addEventListener('click', e => {
-  if (e.target.closest('#ui') || e.target.closest('#header') || e.target.closest('.dish-wrapper')) return;
-
-  let tA = curA, tB = curB;
-  placed.forEach(p => { if (Math.abs(p.a - tA) < 15) tA += 20; });
-  placed.push({a: tA, b: tB, name: selected.name});
+  if (e.target.closest('#bottom-ui') || e.target.closest('.top-ui') || e.target.closest('.scale-ctrl') || e.target.closest('.dish-wrapper')) return;
 
   const node = document.createElement('div');
   node.className = 'spatial-node';
-  node.style.transform = `rotateZ(${tA}deg) rotateX(${-tB + 90}deg) translateZ(850px)`;
+  node.style.transform = `rotateZ(${alpha}deg) rotateX(${-beta + 90}deg) translateZ(800px) scale(${currentScale})`;
+
   node.innerHTML = `
-    <div class="dish-wrapper" onclick="this.parentElement.remove(); updateBill(-${selected.price}, '${selected.name}')">
-      <div class="steam-cloud" style="animation-delay:0s"></div>
-      <div class="steam-cloud" style="animation-delay:0.5s"></div>
+    <div class="dish-wrapper" onclick="removeNode(this, ${selected.price})">
+      <div class="steam-particle" style="left:30%; animation-delay:0s"></div>
+      <div class="steam-particle" style="left:50%; animation-delay:0.5s"></div>
+      <div class="steam-particle" style="left:70%; animation-delay:1s"></div>
       <img src="${selected.img}" class="food-img">
-      <div class="label-3d"><b>${selected.name}</b></div>
-      <div class="contact-shadow"></div>
+      <div class="label-tag">${selected.name}</div>
+      <div class="ground-shadow"></div>
     </div>
   `;
+
   world.appendChild(node);
-  updateBill(selected.price);
-  sfx.play();
-  if(navigator.vibrate) navigator.vibrate([40, 20, 40]);
+  updateCart(selected.price, selected.name);
+  if(navigator.vibrate) navigator.vibrate([30, 20, 30]);
 });
 
-function updateBill(amt, name) {
-  total += amt;
-  document.getElementById('total-price').innerText = Math.max(0, total);
-  if (amt < 0) placed = placed.filter(p => p.name !== name);
+function removeNode(el, price) {
+  el.parentElement.remove();
+  updateCart(-price);
 }
 
-function toggleUI() {
-  const ui = document.getElementById('ui');
-  const header = document.getElementById('header');
-  const isHidden = ui.style.transform === "translateY(100%)";
-  ui.style.transform = isHidden ? "translateY(0)" : "translateY(100%)";
-  header.style.opacity = isHidden ? "1" : "0";
+function updateCart(amt, name) {
+  totalBill += amt;
+  document.getElementById('bill').innerText = Math.max(0, totalBill);
+  if (amt > 0) placedItems.push(name);
 }
 
-function checkout() {
-  const msg = encodeURIComponent(`I want to order: ${placed.map(p => p.name).join(", ")}. Total: $${total}`);
-  window.open(`https://wa.me/YOUR_NUMBER_HERE?text=${msg}`);
+function adjustScale(val) { currentScale += val; }
+
+function togglePhoto() {
+  const ui = document.getElementById('bottom-ui');
+  ui.style.transform = ui.style.transform === "translateY(100%)" ? "translateY(0)" : "translateY(100%)";
 }
 
-function clearSpace() { world.innerHTML = ''; total = 0; placed = []; document.getElementById('total-price').innerText = 0; }
+function sendOrder() {
+  const text = encodeURIComponent(`New AR Order: ${placedItems.join(", ")}. Total: $${totalBill}`);
+  window.open(`https://wa.me/YOUR_NUMBER?text=${text}`);
+}
+
+function clearAll() { world.innerHTML = ''; totalBill = 0; document.getElementById('bill').innerText = 0; placedItems = []; }
 </script>
 </body>
 </html>
