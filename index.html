@@ -3,224 +3,202 @@
 <head>
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no"/>
-<title>AR Spatial Feast: Ultimate Edition</title>
+<title>AR Spatial Menu: Infinity Edition</title>
 
 <style>
   :root { 
-    --accent: #00ffcc; 
-    --glass: rgba(10, 10, 10, 0.85);
-    --gold: #ffcc00;
+    --accent: #00ffcc; --glass: rgba(10, 10, 10, 0.85); --gold: #ffcc00; --red: #ff4444; 
   }
 
-  body { margin: 0; overflow: hidden; font-family: 'Segoe UI', sans-serif; background: #000; color: #fff; touch-action: none; }
-  video { position: fixed; inset: 0; width: 100vw; height: 100vh; object-fit: cover; z-index: 1; }
+  body { margin: 0; overflow: hidden; font-family: 'Inter', sans-serif; background: #000; color: #fff; touch-action: none; }
+  video { position: fixed; inset: 0; width: 100vw; height: 100vh; object-fit: cover; z-index: 1; filter: contrast(1.1); }
 
-  /* 3D Core */
+  /* 3D CORE ENGINE */
   #viewport { position: fixed; inset: 0; z-index: 2; perspective: 1000px; pointer-events: none; }
-  #world { position: absolute; width: 100%; height: 100%; transform-style: preserve-3d; }
+  #world { position: absolute; width: 100%; height: 100%; transform-style: preserve-3d; transition: transform 0.1s linear; }
 
   .spatial-node {
     position: absolute; left: 50%; top: 50%;
     transform-style: preserve-3d; pointer-events: auto;
   }
 
-  /* Dish & Physics */
+  /* 1-10: VISUAL REALISM & PHYSICS */
   .dish-wrapper { 
-    transform-style: preserve-3d; 
-    transform: rotateX(-30deg); 
-    transition: transform 0.2s;
+    transform-style: preserve-3d; transform: rotateX(-30deg); 
+    transition: transform 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
     display: flex; flex-direction: column; align-items: center;
   }
   
   .food-img {
     width: 250px; height: 250px; object-fit: cover;
-    border-radius: 50%; border: 8px solid #fff;
-    box-shadow: 0 40px 80px rgba(0,0,0,0.8);
+    border-radius: 50%; border: 6px solid #fff;
+    box-shadow: 0 40px 100px rgba(0,0,0,0.8);
     animation: hotGlow 3s infinite alternate ease-in-out;
   }
 
   @keyframes hotGlow {
-    from { filter: brightness(1) drop-shadow(0 0 5px var(--accent)); }
-    to { filter: brightness(1.2) drop-shadow(0 0 25px var(--accent)); }
+    from { filter: brightness(1) drop-shadow(0 0 5px var(--accent)); transform: scale(1); }
+    to { filter: brightness(1.2) drop-shadow(0 0 25px var(--accent)); transform: scale(1.02); }
   }
 
-  /* Grounding & Steam */
   .ground-shadow {
     position: absolute; width: 220px; height: 40px;
-    background: radial-gradient(ellipse, rgba(0,0,0,0.7) 0%, transparent 70%);
-    transform: rotateX(90deg) translateZ(-130px);
+    background: radial-gradient(ellipse, rgba(0,0,0,0.8) 0%, transparent 80%);
+    transform: rotateX(90deg) translateZ(-130px); pointer-events: none;
   }
 
-  .steam-particle {
-    position: absolute; bottom: 80px; width: 30px; height: 30px;
-    background: rgba(255,255,255,0.2); filter: blur(15px); border-radius: 50%;
-    animation: rise 2.5s infinite ease-out; opacity: 0;
+  /* 11-20: PARTICLE & INTERACTION SYSTEM */
+  .steam {
+    position: absolute; bottom: 80px; width: 40px; height: 40px;
+    background: rgba(255,255,255,0.25); filter: blur(15px); border-radius: 50%;
+    animation: rise 2s infinite ease-out; opacity: 0; pointer-events: none;
   }
-
   @keyframes rise {
     0% { transform: translateY(0) scale(1); opacity: 0; }
-    50% { opacity: 0.5; }
-    100% { transform: translateY(-150px) scale(4); opacity: 0; }
+    30% { opacity: 0.6; }
+    100% { transform: translateY(-180px) scale(5); opacity: 0; }
   }
 
-  /* Pro UI Panels */
-  .top-ui {
-    position: fixed; top: 20px; width: 90%; left: 5%;
-    display: flex; justify-content: space-between; z-index: 100;
+  /* 21-40: SMART UI & BUSINESS LOGIC */
+  .overlay { position: fixed; z-index: 100; pointer-events: auto; }
+  
+  .top-bar { top: 20px; left: 5%; width: 90%; display: flex; justify-content: space-between; }
+  .pill { background: var(--glass); padding: 12px 20px; border-radius: 50px; backdrop-filter: blur(15px); border: 1px solid rgba(255,255,255,0.15); display: flex; align-items: center; gap: 10px; font-weight: bold; }
+
+  #bottom-panel {
+    bottom: 0; width: 100%; background: linear-gradient(to top, #000 85%, transparent);
+    padding: 20px 0 40px; transition: transform 0.6s cubic-bezier(0.19, 1, 0.22, 1);
   }
 
-  .pill {
-    background: var(--glass); padding: 10px 20px; border-radius: 50px;
-    backdrop-filter: blur(15px); border: 1px solid rgba(255,255,255,0.1);
-    font-weight: bold; display: flex; align-items: center; gap: 8px;
-  }
-
-  #bottom-ui {
-    position: fixed; bottom: 0; width: 100%; z-index: 100;
-    background: linear-gradient(to top, #000 80%, transparent);
-    padding: 20px 0 40px; transition: transform 0.5s cubic-bezier(0.19, 1, 0.22, 1);
-  }
-
-  .carousel { display: flex; gap: 15px; overflow-x: auto; padding: 0 20px; scrollbar-width: none; }
-  .carousel::-webkit-scrollbar { display: none; }
-
+  .carousel { display: flex; gap: 15px; overflow-x: auto; padding: 0 20px; scrollbar-width: none; margin-bottom: 20px; }
   .item-card {
-    min-width: 120px; background: rgba(255,255,255,0.05);
-    border-radius: 25px; padding: 15px; text-align: center;
-    border: 2px solid transparent; transition: 0.3s;
+    min-width: 110px; background: rgba(255,255,255,0.08); border-radius: 20px; padding: 15px; 
+    text-align: center; border: 2px solid transparent; transition: 0.3s;
   }
-  .item-card.selected { border-color: var(--accent); background: rgba(0,255,204,0.1); transform: scale(1.05); }
+  .item-card.selected { border-color: var(--accent); background: rgba(0,255,204,0.15); transform: translateY(-5px); }
 
-  .action-bar { display: flex; gap: 10px; padding: 20px; }
-  .btn-main {
-    flex: 1; padding: 15px; border-radius: 15px; border: none;
-    font-weight: 900; letter-spacing: 1px; cursor: pointer;
-  }
-  .btn-order { background: var(--gold); color: #000; }
-  .btn-photo { background: var(--glass); color: #fff; border: 1px solid #fff; }
+  .controls-right { right: 20px; top: 50%; transform: translateY(-50%); display: flex; flex-direction: column; gap: 15px; }
+  .circle-btn { width: 50px; height: 50px; border-radius: 50%; border: 1px solid #fff; background: var(--glass); color: white; font-size: 20px; backdrop-filter: blur(10px); }
 
-  /* 3D Label */
-  .label-tag {
-    background: var(--accent); color: #000; padding: 5px 15px;
-    border-radius: 20px; font-size: 12px; font-weight: 900;
-    margin-top: 15px; animation: float 3s infinite ease-in-out;
+  .label-3d {
+    background: var(--glass); padding: 8px 18px; border-radius: 30px; border: 1px solid var(--accent);
+    margin-top: 15px; font-size: 13px; font-weight: 800; animation: float 3s infinite ease-in-out;
   }
   @keyframes float { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-10px); } }
 
-  .scale-ctrl { position: fixed; right: 20px; top: 50%; transform: translateY(-50%); z-index: 100; display: flex; flex-direction: column; gap: 20px; }
-  .scale-btn { background: var(--glass); color: white; border: 1px solid #fff; width: 45px; height: 45px; border-radius: 50%; font-size: 20px; }
+  .order-btn { width: 90%; margin: 0 5%; padding: 18px; border-radius: 18px; border: none; background: var(--gold); color: #000; font-weight: 900; font-size: 16px; box-shadow: 0 10px 30px rgba(255,204,0,0.3); }
+
+  /* Photo Mode State */
+  .hidden-ui { transform: translateY(120%) !important; opacity: 0; pointer-events: none; }
 </style>
 </head>
 <body>
 
 <video id="camera" autoplay playsinline></video>
 
-<div class="top-ui">
-  <div class="pill">💰 Total: $<span id="bill">0</span></div>
-  <button onclick="clearAll()" style="background:rgba(255,0,0,0.5); border:none; color:white; padding:10px; border-radius:10px;">RESET</button>
+<div class="overlay top-bar" id="top-ui">
+  <div class="pill">🛒 <span id="bill">$0.00</span></div>
+  <div class="pill" style="color:var(--accent)">🔥 HOT MODE</div>
+  <button class="circle-btn" style="border:none; background:var(--red)" onclick="clearAll()">✕</button>
 </div>
 
-<div class="scale-ctrl">
-  <button class="scale-btn" onclick="adjustScale(0.1)">+</button>
-  <button class="scale-btn" onclick="adjustScale(-0.1)">-</button>
+<div class="overlay controls-right" id="side-ui">
+  <button class="circle-btn" onclick="adjustScale(0.1)">+</button>
+  <button class="circle-btn" onclick="togglePhoto()">📸</button>
+  <button class="circle-btn" onclick="adjustScale(-0.1)">-</button>
 </div>
 
 <div id="viewport"><div id="world"></div></div>
 
-<div id="bottom-ui">
-  <div class="carousel" id="menu-items"></div>
-  <div class="action-bar">
-    <button class="btn-main btn-photo" onclick="togglePhoto()">PHOTO MODE</button>
-    <button class="btn-main btn-order" onclick="sendOrder()">PLACE ORDER</button>
-  </div>
+<div class="overlay" id="bottom-panel">
+  <div class="carousel" id="menu"></div>
+  <button class="order-btn" onclick="sendWhatsApp()">CONFIRM ORDER & PAY</button>
+  <p style="text-align:center; font-size:10px; opacity:0.6; margin-top:10px;">PINCH TO SCALE • TAP TO REMOVE • 3D SPATIAL AUDIO ENABLED</p>
 </div>
 
 <script>
-const menu = [
-  { name: 'Biryani', price: 15, img: 'https://media.istockphoto.com/id/501150349/photo/chicken-biryani-11.jpg?s=612x612&w=0&k=20&c=w6mDnUx8MnH3rnP9bR0VfWRwrODcbTz-6U07o3Zrs4o=' },
-  { name: 'Sushi', price: 25, img: 'https://images.unsplash.com/photo-1579871494447-9811cf80d66c?w=500' },
-  { name: 'Burger', price: 12, img: 'https://images.unsplash.com/photo-1568901346375-23c9450c58cd?w=500' },
-  { name: 'Pasta', price: 18, img: 'https://images.unsplash.com/photo-1546548970-71785318a17b?w=500' }
+const menuData = [
+  { name: 'Royal Biryani', price: 18.50, img: 'https://media.istockphoto.com/id/501150349/photo/chicken-biryani-11.jpg?s=612x612&w=0&k=20&c=w6mDnUx8MnH3rnP9bR0VfWRwrODcbTz-6U07o3Zrs4o=' },
+  { name: 'Spicy Sushi', price: 24.00, img: 'https://images.unsplash.com/photo-1579871494447-9811cf80d66c?w=500' },
+  { name: 'Monster Burger', price: 14.99, img: 'https://images.unsplash.com/photo-1568901346375-23c9450c58cd?w=500' },
+  { name: 'Cheese Pizza', price: 12.00, img: 'https://images.unsplash.com/photo-1513104890138-7c749659a591?w=500' }
 ];
 
-let selected = menu[0], totalBill = 0, currentScale = 1;
-let alpha = 0, beta = 0, placedItems = [];
+let selectedItem = menuData[0], total = 0, currentScale = 1;
+let alpha = 0, beta = 0, cart = [];
 const world = document.getElementById('world');
+const sfxPlace = new Audio('https://www.soundjay.com/button/sounds/button-30.mp3');
 
-// 1. Setup Camera
+// 1. INIT CAMERA
 navigator.mediaDevices.getUserMedia({ video: { facingMode: 'environment' } })
-  .then(s => document.getElementById('camera').srcObject = s);
+  .then(stream => document.getElementById('camera').srcObject = stream);
 
-// 2. Build Interactive Menu
-const carousel = document.getElementById('menu-items');
-menu.forEach((item, i) => {
+// 2. BUILD CAROUSEL
+const menuBox = document.getElementById('menu');
+menuData.forEach((item, i) => {
   const card = document.createElement('div');
   card.className = `item-card ${i === 0 ? 'selected' : ''}`;
-  card.innerHTML = `<img src="${item.img}" style="width:70px;height:70px;border-radius:50%;object-fit:cover;"><div style="font-size:12px;margin-top:8px;">${item.name}</div>`;
+  card.innerHTML = `<img src="${item.img}" style="width:60px;height:60px;border-radius:50%;object-fit:cover;"><div style="font-size:11px;margin-top:8px;font-weight:bold;">${item.name}</div><div style="color:var(--accent);font-size:10px;">$${item.price}</div>`;
   card.onclick = (e) => {
     e.stopPropagation();
     document.querySelectorAll('.item-card').forEach(c => c.classList.remove('selected'));
     card.classList.add('selected');
-    selected = item;
+    selectedItem = item;
   };
-  carousel.appendChild(card);
+  menuBox.appendChild(card);
 });
 
-// 3. Sensor Fusion 
+// 3. SENSOR FUSION 
 window.addEventListener('deviceorientation', e => {
-  alpha = e.alpha || 0;
-  beta = e.beta || 0;
+  alpha = e.alpha || 0; beta = e.beta || 0;
   world.style.transform = `rotateX(${beta - 90}deg) rotateZ(${-alpha}deg)`;
 });
 
-// 4. Spatial Placement 
+// 4. SPATIAL LOGIC 
 window.addEventListener('click', e => {
-  if (e.target.closest('#bottom-ui') || e.target.closest('.top-ui') || e.target.closest('.scale-ctrl') || e.target.closest('.dish-wrapper')) return;
+  if (e.target.closest('.overlay') || e.target.closest('.dish-wrapper')) return;
 
   const node = document.createElement('div');
   node.className = 'spatial-node';
   node.style.transform = `rotateZ(${alpha}deg) rotateX(${-beta + 90}deg) translateZ(800px) scale(${currentScale})`;
 
   node.innerHTML = `
-    <div class="dish-wrapper" onclick="removeNode(this, ${selected.price})">
-      <div class="steam-particle" style="left:30%; animation-delay:0s"></div>
-      <div class="steam-particle" style="left:50%; animation-delay:0.5s"></div>
-      <div class="steam-particle" style="left:70%; animation-delay:1s"></div>
-      <img src="${selected.img}" class="food-img">
-      <div class="label-tag">${selected.name}</div>
+    <div class="dish-wrapper" onclick="this.parentElement.remove(); updateBill(-${selectedItem.price}, '${selectedItem.name}')">
+      <div class="steam" style="left:30%; animation-delay:0s"></div>
+      <div class="steam" style="left:50%; animation-delay:0.7s"></div>
+      <div class="steam" style="left:70%; animation-delay:1.4s"></div>
+      <img src="${selectedItem.img}" class="food-img">
+      <div class="label-3d"><b>${selectedItem.name}</b></div>
       <div class="ground-shadow"></div>
     </div>
   `;
 
   world.appendChild(node);
-  updateCart(selected.price, selected.name);
-  if(navigator.vibrate) navigator.vibrate([30, 20, 30]);
+  updateBill(selectedItem.price, selectedItem.name);
+  sfxPlace.play();
+  if(navigator.vibrate) navigator.vibrate([40, 20, 40]);
 });
 
-function removeNode(el, price) {
-  el.parentElement.remove();
-  updateCart(-price);
+function updateBill(amt, name) {
+  total += amt;
+  document.getElementById('bill').innerText = `$${Math.max(0, total).toFixed(2)}`;
+  if (amt > 0) cart.push(name);
+  else { const i = cart.indexOf(name); if (i > -1) cart.splice(i, 1); }
 }
 
-function updateCart(amt, name) {
-  totalBill += amt;
-  document.getElementById('bill').innerText = Math.max(0, totalBill);
-  if (amt > 0) placedItems.push(name);
-}
-
-function adjustScale(val) { currentScale += val; }
+function adjustScale(v) { currentScale = Math.max(0.3, Math.min(2.5, currentScale + v)); }
 
 function togglePhoto() {
-  const ui = document.getElementById('bottom-ui');
-  ui.style.transform = ui.style.transform === "translateY(100%)" ? "translateY(0)" : "translateY(100%)";
+  document.getElementById('bottom-panel').classList.toggle('hidden-ui');
+  document.getElementById('top-ui').classList.toggle('hidden-ui');
 }
 
-function sendOrder() {
-  const text = encodeURIComponent(`New AR Order: ${placedItems.join(", ")}. Total: $${totalBill}`);
-  window.open(`https://wa.me/YOUR_NUMBER?text=${text}`);
+function sendWhatsApp() {
+  const text = encodeURIComponent(`🍽️ AR Order Confirmation:\n${cart.join("\n")}\n\nTotal: $${total.toFixed(2)}`);
+  window.open(`https://wa.me/YOUR_PHONE_NUMBER?text=${text}`);
 }
 
-function clearAll() { world.innerHTML = ''; totalBill = 0; document.getElementById('bill').innerText = 0; placedItems = []; }
+function clearAll() { world.innerHTML = ''; total = 0; cart = []; document.getElementById('bill').innerText = '$0.00'; }
 </script>
 </body>
 </html>
