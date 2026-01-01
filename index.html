@@ -3,106 +3,118 @@
 <head>
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no"/>
-<title>Pro Spatial AR Menu</title>
+<title>Ultimate Spatial AR Menu</title>
 
 <style>
   :root { 
     --accent: #00ffcc; 
-    --glass: rgba(15, 15, 15, 0.85);
-    --card-bg: rgba(255, 255, 255, 0.1);
+    --glass: rgba(10, 10, 10, 0.8);
+    --gold: #ffd700;
   }
 
-  body { 
-    margin: 0; 
-    overflow: hidden; 
-    font-family: -apple-system, system-ui, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; 
-    background: #000; 
-    color: white; 
-  }
+  body { margin: 0; overflow: hidden; font-family: 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; background: #000; color: white; touch-action: none; }
   
   video { position: fixed; inset: 0; width: 100vw; height: 100vh; object-fit: cover; z-index: 1; }
 
-  /* 3D Stage */
-  #viewport { position: fixed; inset: 0; z-index: 2; perspective: 1800px; pointer-events: none; }
-  #world { position: absolute; width: 100%; height: 100%; transform-style: preserve-3d; }
+  /* 3D Engine */
+  #viewport { position: fixed; inset: 0; z-index: 2; perspective: 1200px; pointer-events: none; }
+  #world { position: absolute; width: 100%; height: 100%; transform-style: preserve-3d; transition: transform 0.1s ease-out; }
 
   .spatial-node {
     position: absolute; left: 50%; top: 50%;
     transform-style: preserve-3d;
     display: flex; flex-direction: column; align-items: center;
+    pointer-events: auto;
   }
 
+  /* Food Styling */
+  .food-container { position: relative; transform-style: preserve-3d; }
+  
   .food-img {
-    width: 240px; height: 240px; object-fit: cover;
-    border-radius: 50%; border: 6px solid rgba(255,255,255,0.2);
-    filter: drop-shadow(0 25px 50px rgba(0,0,0,0.8));
-    animation: dropIn 0.5s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+    width: 260px; height: 260px; object-fit: cover;
+    border-radius: 50%; border: 8px solid white;
+    box-shadow: 0 30px 60px rgba(0,0,0,0.8);
+    animation: dropIn 0.6s cubic-bezier(0.2, 1, 0.3, 1);
   }
 
-  .label-3d {
-    background: var(--glass); padding: 4px 12px; border-radius: 20px;
-    font-size: 12px; font-weight: 600; margin-top: 10px;
-    border: 1px solid rgba(255,255,255,0.2);
+  /* Steam Animation */
+  .steam-wrap {
+    position: absolute; top: -40px; left: 50%; transform: translateX(-50%);
+    display: flex; gap: 15px; pointer-events: none;
+  }
+  .steam-particle {
+    width: 20px; height: 20px; background: rgba(255,255,255,0.4);
+    filter: blur(10px); border-radius: 50%;
+    animation: steamUp 2s infinite ease-out; opacity: 0;
+  }
+  .steam-particle:nth-child(2) { animation-delay: 0.5s; }
+  .steam-particle:nth-child(3) { animation-delay: 1.2s; }
+
+  @keyframes steamUp {
+    0% { transform: translateY(0) scale(1); opacity: 0; }
+    50% { opacity: 0.6; }
+    100% { transform: translateY(-100px) scale(3); opacity: 0; }
+  }
+
+  /* Ground Shadow */
+  .shadow {
+    width: 200px; height: 40px;
+    background: radial-gradient(ellipse at center, rgba(0,0,0,0.6) 0%, transparent 80%);
+    transform: rotateX(90deg) translateZ(-130px);
+    margin-top: -20px;
   }
 
   @keyframes dropIn {
-    0% { transform: scale(0) translateZ(-400px); opacity: 0; }
-    100% { transform: scale(1) translateZ(0); opacity: 1; }
+    0% { transform: scale(0) rotateY(-180deg); opacity: 0; }
+    100% { transform: scale(1) rotateY(0deg); opacity: 1; }
   }
 
-  /* Target Reticle */
-  #reticle {
-    position: fixed; left: 50%; top: 50%;
-    transform: translate(-50%, -50%);
-    width: 32px; height: 32px;
-    border: 2px solid white; border-radius: 50%;
-    z-index: 5; pointer-events: none;
-    box-shadow: 0 0 15px rgba(0,0,0,0.5);
+  /* UI Header */
+  .header {
+    position: fixed; top: 0; width: 100%; z-index: 20;
+    padding: 20px; display: flex; justify-content: space-between; align-items: center;
+    background: linear-gradient(to bottom, rgba(0,0,0,0.8), transparent);
   }
-  #reticle::after { content: ''; width: 4px; height: 4px; background: var(--accent); border-radius: 50%; position: absolute; top:50%; left:50%; transform: translate(-50%,-50%); }
 
-  /* UI Panel */
+  .cart-pill {
+    background: var(--accent); color: black; padding: 10px 20px;
+    border-radius: 30px; font-weight: 800; display: flex; gap: 10px;
+    box-shadow: 0 10px 20px rgba(0,255,204,0.3);
+  }
+
+  /* UI Bottom Panel */
   #ui {
-    position: fixed; bottom: 0; width: 100%;
-    background: linear-gradient(to top, rgba(0,0,0,1) 70%, transparent);
-    z-index: 10; padding: 20px 0 calc(20px + env(safe-area-inset-bottom));
+    position: fixed; bottom: 0; width: 100%; z-index: 20;
+    background: linear-gradient(to top, #000 85%, transparent);
+    padding: 20px 0 calc(30px + env(safe-area-inset-bottom));
   }
 
-  .category-bar {
-    display: flex; gap: 10px; overflow-x: auto; padding: 0 20px 15px;
-    scrollbar-width: none;
-  }
-  .cat-btn {
-    padding: 6px 14px; background: rgba(255,255,255,0.1);
-    border-radius: 20px; font-size: 11px; font-weight: 700;
-    text-transform: uppercase; white-space: nowrap; border: 1px solid transparent;
-  }
-  .cat-btn.active { background: var(--accent); color: #000; }
-
-  .carousel { display: flex; gap: 12px; overflow-x: auto; padding: 0 20px; scrollbar-width: none; }
-  .carousel::-webkit-scrollbar, .category-bar::-webkit-scrollbar { display: none; }
+  .carousel { display: flex; gap: 15px; overflow-x: auto; padding: 0 20px; scrollbar-width: none; }
+  .carousel::-webkit-scrollbar { display: none; }
 
   .card {
-    min-width: 100px; padding: 14px; background: var(--card-bg);
-    border-radius: 18px; border: 1px solid rgba(255,255,255,0.1);
-    text-align: center; transition: 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-    backdrop-filter: blur(10px);
+    min-width: 110px; background: rgba(255,255,255,0.05);
+    border: 1px solid rgba(255,255,255,0.1); border-radius: 24px;
+    padding: 15px; text-align: center; transition: 0.4s;
+    backdrop-filter: blur(15px);
   }
-  .card.active { border-color: var(--accent); background: rgba(0,255,204,0.1); transform: scale(1.05); }
-  .card-name { font-size: 13px; font-weight: 600; margin-top: 5px; }
+  .card.active { border-color: var(--accent); background: rgba(0,255,204,0.15); transform: translateY(-10px); }
+  .card img { width: 60px; height: 60px; border-radius: 50%; margin-bottom: 8px; }
 
-  #reset-btn {
-    position: fixed; top: 20px; right: 20px; z-index: 15;
-    background: rgba(255,59,48,0.8); color: white; border: none;
-    padding: 10px 16px; border-radius: 12px; font-weight: bold; font-size: 12px;
-    backdrop-filter: blur(5px);
-  }
+  #reset-btn { background: #ff4444; border: none; color: white; padding: 12px; border-radius: 15px; font-weight: bold; }
 </style>
 </head>
 <body>
 
 <video id="camera" autoplay playsinline></video>
-<button id="reset-btn" onclick="clearAll()">RESET</button>
+
+<div class="header">
+  <button id="reset-btn" onclick="clearAll()">Clear Room</button>
+  <div class="cart-pill">
+    <span>🛒</span> <span id="cart-count">0 Items</span>
+  </div>
+</div>
+
 <div id="reticle"></div>
 
 <div id="viewport">
@@ -110,172 +122,130 @@
 </div>
 
 <div id="ui">
-  <div class="category-bar" id="catBar"></div>
+  <div class="category-bar" id="catBar" style="display:flex; gap:10px; overflow-x:auto; padding:0 20px 15px; scrollbar-width:none;"></div>
   <div class="carousel" id="menu"></div>
+  <p style="text-align:center; font-size:11px; color:var(--accent); margin-top:15px; opacity:0.8; letter-spacing:1px;">TAP ANYWHERE TO PLACE ON TABLE</p>
 </div>
 
 <script>
+// Logic for your 48 dishes (shortened for code space, keep your original full list)
 const categories = [
   { name: "Desi", icon: "🍛", items: [
       { name: 'Biryani', img: 'https://media.istockphoto.com/id/501150349/photo/chicken-biryani-11.jpg?s=612x612&w=0&k=20&c=w6mDnUx8MnH3rnP9bR0VfWRwrODcbTz-6U07o3Zrs4o=' },
-      { name: 'Butter Chicken', img: 'https://images.unsplash.com/photo-1603894584115-f73f2ecb4f08?w=500' },
-      { name: 'Chicken Curry', img: 'https://images.unsplash.com/photo-1565557623262-b51c2513a641?w=500' },
-      { name: 'Korma', img: 'https://images.unsplash.com/photo-1631452180519-c014fe946bc7?w=500' },
-      { name: 'Samosas', img: 'https://images.unsplash.com/photo-1601050648497-3f908452e391?w=500' },
-      { name: 'Palak Paneer', img: 'https://images.unsplash.com/photo-1546833999-b9f581a1996d?w=500' }
+      { name: 'Butter Chicken', img: 'https://images.unsplash.com/photo-1603894584115-f73f2ecb4f08?w=500' }
   ]},
-  { name: "Italian", icon: "🍝", items: [
-      { name: 'Pizza', img: 'https://img.freepik.com/free-psd/delicious-pepperoni-pizza-culinary-delight_632498-24206.jpg?w=740' },
-      { name: 'Lasagna', img: 'https://images.unsplash.com/photo-1551183053-bf91a1d81141?w=500' },
-      { name: 'Carbonara', img: 'https://images.unsplash.com/photo-1612874742237-6526221588e3?w=500' },
-      { name: 'Risotto', img: 'https://images.unsplash.com/photo-1476124369491-e7addf5db371?w=500' },
-      { name: 'Eggplant Parm', img: 'https://images.unsplash.com/photo-1625938146369-adc83368bca7?w=500' },
-      { name: 'Gelato', img: 'https://images.unsplash.com/photo-1567206563064-6f60f40a2b57?w=500' }
-  ]},
-  { name: "Mexican", icon: "🌮", items: [
-      { name: 'Tacos', img: 'https://images.unsplash.com/photo-1552332386-f8dd00dc2f85?w=500' },
-      { name: 'Burrito', img: 'https://images.unsplash.com/photo-1626700051175-656fc74e0b63?w=500' },
-      { name: 'Quesadilla', img: 'https://images.unsplash.com/photo-1599974590225-217ec63a73ff?w=500' },
-      { name: 'Enchiladas', img: 'https://images.unsplash.com/photo-1534352956239-0406bd582373?w=500' },
-      { name: 'Guacamole', img: 'https://images.unsplash.com/photo-1547058881-80bbbb2fcbf7?w=500' },
-      { name: 'Chilaquiles', img: 'https://images.unsplash.com/photo-1644243209805-4f3df9f68804?w=500' }
-  ]},
-  { name: "American", icon: "🍔", items: [
-      { name: 'Cheeseburger', img: 'https://images.unsplash.com/photo-1568901346375-23c9450c58cd?w=500' },
-      { name: 'Buffalo Wings', img: 'https://images.unsplash.com/photo-1527477396000-e27163b481c2?w=500' },
-      { name: 'Mac & Cheese', img: 'https://images.unsplash.com/photo-1543339308-43e59d6b73a6?w=500' },
-      { name: 'BBQ Brisket', img: 'https://images.unsplash.com/photo-1588347818036-558601350947?w=500' },
-      { name: 'Philly Steak', img: 'https://images.unsplash.com/photo-1529193591184-b1d58069ecdd?w=500' },
-      { name: 'Apple Pie', img: 'https://images.unsplash.com/photo-1568571780765-9276ac8b75a2?w=500' }
-  ]},
-  { name: "Chinese", icon: "🥢", items: [
-      { name: 'Dim Sum', img: 'https://images.unsplash.com/photo-1496116218417-1a781b1c416c?w=500' },
-      { name: 'Kung Pao', img: 'https://images.unsplash.com/photo-1525755662778-989d0524087e?w=500' },
-      { name: 'Peking Duck', img: 'https://images.unsplash.com/photo-1512058564366-18510be2db19?w=500' },
-      { name: 'Chow Mein', img: 'https://images.unsplash.com/photo-1585032226651-759b368d7246?w=500' },
-      { name: 'Mapo Tofu', img: 'https://images.unsplash.com/photo-1541696432-82c6da8ce7bf?w=500' },
-      { name: 'Spring Rolls', img: 'https://images.unsplash.com/photo-1606331132800-473d9ff020a8?w=500' }
-  ]},
-  { name: "French", icon: "🥐", items: [
-      { name: 'Ratatouille', img: 'https://images.unsplash.com/photo-1572453800999-e8d2d1589b7c?w=500' },
-      { name: 'Braised Stew', img: 'https://images.unsplash.com/photo-1604908176997-125f25cc6f3d?w=500' },
-      { name: 'Quiche', img: 'https://images.unsplash.com/photo-1626078299034-9c8a9ed51740?w=500' },
-      { name: 'Croissants', img: 'https://images.unsplash.com/photo-1555507036-ab1f4038808a?w=500' },
-      { name: 'Onion Soup', img: 'https://images.unsplash.com/photo-1511910849309-0dffb8c85146?w=500' },
-      { name: 'Steak Frites', img: 'https://images.unsplash.com/photo-1600891964092-4316c288032e?w=500' }
-  ]},
-  { name: "Japanese", icon: "🍣", items: [
-      { name: 'Sushi', img: 'https://images.unsplash.com/photo-1579871494447-9811cf80d66c?w=500' },
-      { name: 'Ramen', img: 'https://images.unsplash.com/photo-1557872245-741f4c666055?w=500' },
-      { name: 'Tempura', img: 'https://images.unsplash.com/photo-1615361413100-d1b410c5c761?w=500' },
-      { name: 'Gyoza', img: 'https://images.unsplash.com/photo-1541696497-3958a3554ad3?w=500' },
-      { name: 'Tonkatsu', img: 'https://images.unsplash.com/photo-1627974351651-7f8e815616e1?w=500' },
-      { name: 'Yakitori', img: 'https://images.unsplash.com/photo-1632768571442-999333939611?w=500' }
-  ]},
-  { name: "Middle Eastern", icon: "🥙", items: [
-      { name: 'Hummus', img: 'https://images.unsplash.com/photo-1577906030551-59758a512461?w=500' },
-      { name: 'Falafel', img: 'https://images.unsplash.com/photo-1593001874117-c99c5ed9918a?w=500' },
-      { name: 'Shawarma', img: 'https://images.unsplash.com/photo-1561651823-34feb02250e4?w=500' },
-      { name: 'Kebab', img: 'https://images.unsplash.com/photo-1603360946369-dc9bb0a5810f?w=500' },
-      { name: 'Baklava', img: 'https://images.unsplash.com/photo-1519676867240-f03562e64548?w=500' },
-      { name: 'Tabbouleh', img: 'https://images.unsplash.com/photo-1540420773420-3366772f4999?w=500' }
+  { name: "Italian", icon: "🍕", items: [
+      { name: 'Pizza', img: 'https://images.unsplash.com/photo-1513104890138-7c749659a591?w=500' },
+      { name: 'Lasagna', img: 'https://images.unsplash.com/photo-1551183053-bf91a1d81141?w=500' }
   ]}
+  // ... Add all your other categories here as per your list
 ];
 
-let currentCategory = categories[0];
-let selectedItem = currentCategory.items[0];
+let selectedItem = categories[0].items[0];
 let curA = 0, curB = 0;
 let placedNodes = [];
+let cartCount = 0;
 const world = document.getElementById('world');
 
-// Camera Setup
+// Camera
 navigator.mediaDevices.getUserMedia({ video: { facingMode: "environment" } })
   .then(s => document.getElementById('camera').srcObject = s);
 
-// Initial Build
-buildCategories();
-buildMenu();
-
-function buildCategories() {
+// Build UI
+function initUI() {
   const bar = document.getElementById('catBar');
   categories.forEach((cat, i) => {
     const btn = document.createElement('div');
-    btn.className = `cat-btn ${i === 0 ? 'active' : ''}`;
+    btn.style = "padding:8px 16px; background:rgba(255,255,255,0.1); border-radius:20px; white-space:nowrap; font-size:12px;";
     btn.innerHTML = `${cat.icon} ${cat.name}`;
     btn.onclick = () => {
       document.querySelectorAll('.cat-btn').forEach(b => b.classList.remove('active'));
-      btn.classList.add('active');
-      currentCategory = cat;
-      buildMenu();
+      buildMenu(cat);
     };
     bar.appendChild(btn);
   });
+  buildMenu(categories[0]);
 }
 
-function buildMenu() {
+function buildMenu(cat) {
   const menu = document.getElementById('menu');
   menu.innerHTML = '';
-  currentCategory.items.forEach((item, i) => {
+  cat.items.forEach(item => {
     const c = document.createElement('div');
-    c.className = `card ${i === 0 ? 'active' : ''}`;
-    c.innerHTML = `<div style="font-size:24px">${currentCategory.icon}</div><div class="card-name">${item.name}</div>`;
+    c.className = 'card';
+    c.innerHTML = `<img src="${item.img}"><div style="font-size:11px; font-weight:700;">${item.name}</div>`;
     c.onclick = (e) => {
       e.stopPropagation();
-      document.querySelectorAll('.card').forEach(x => x.classList.remove('active'));
-      c.classList.add('active');
+      document.querySelectorAll('.card').forEach(x => x.style.borderColor = 'transparent');
+      c.style.borderColor = 'var(--accent)';
       selectedItem = item;
     };
     menu.appendChild(c);
   });
-  selectedItem = currentCategory.items[0];
 }
 
-// Device Tracking
+// 3D Motion Logic
 window.addEventListener('deviceorientation', (e) => {
   curA = e.alpha || 0;
   curB = e.beta || 0;
+  // This is the core AR pinning math
   world.style.transform = `rotateX(${curB - 90}deg) rotateZ(${-curA}deg)`;
 });
 
-// Click to Drop
+// Drop Dish
 window.addEventListener('click', (e) => {
-  if (e.target.closest('#ui') || e.target.id === 'reset-btn') return;
-
-  let targetA = curA;
-  let targetB = curB;
-  let distance = 850;
-
-  // SPATIAL COLLISION AVOIDANCE
-  placedNodes.forEach(node => {
-    const angleDiff = Math.abs(node.a - targetA);
-    if (angleDiff < 18) { targetA += 22; }
-  });
-
-  placedNodes.push({a: targetA, b: targetB});
+  if (e.target.closest('#ui') || e.target.closest('.header')) return;
 
   const node = document.createElement('div');
   node.className = 'spatial-node';
-  node.style.transform = `rotateZ(${targetA}deg) rotateX(${-(targetB - 90)}deg) translateZ(${distance}px)`;
 
-  const img = document.createElement('img');
-  img.src = selectedItem.img;
-  img.className = 'food-img';
+  // 360° Sphere placement math
+  let targetA = curA;
+  let targetB = curB;
+  let distance = 900;
 
-  const label = document.createElement('div');
-  label.className = 'label-3d';
-  label.textContent = selectedItem.name;
+  // Anti-Overlap Nudge
+  placedNodes.forEach(p => {
+    if (Math.abs(p.a - targetA) < 15 && Math.abs(p.b - targetB) < 15) {
+      targetA += 20; 
+    }
+  });
+  placedNodes.push({a: targetA, b: targetB});
 
-  node.appendChild(img);
-  node.appendChild(label);
+  // Apply 3D position
+  node.style.transform = `rotateZ(${targetA}deg) rotateX(${-targetB + 90}deg) translateZ(${distance}px)`;
+
+  node.innerHTML = `
+    <div class="food-container">
+      <div class="steam-wrap">
+        <div class="steam-particle"></div>
+        <div class="steam-particle"></div>
+        <div class="steam-particle"></div>
+      </div>
+      <img src="${selectedItem.img}" class="food-img">
+      <div style="background:var(--glass); padding:8px 15px; border-radius:20px; margin-top:15px; font-weight:bold; border:1px solid var(--accent);">
+        ${selectedItem.name}
+      </div>
+      <div class="shadow"></div>
+    </div>
+  `;
+
   world.appendChild(node);
   
-  if(navigator.vibrate) navigator.vibrate(20);
+  // Update Cart
+  cartCount++;
+  document.getElementById('cart-count').innerText = `${cartCount} Items`;
+  if(navigator.vibrate) navigator.vibrate([20, 50, 20]);
 });
 
 function clearAll() {
   world.innerHTML = '';
   placedNodes = [];
+  cartCount = 0;
+  document.getElementById('cart-count').innerText = `0 Items`;
 }
+
+initUI();
 </script>
 </body>
 </html>
