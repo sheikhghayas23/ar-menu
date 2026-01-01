@@ -2,340 +2,165 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8" />
-<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-<title>Smart AR Halal Menu</title>
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no"/>
+<title>Pro AR Spatial Menu</title>
 
 <style>
-  body {
-    margin: 0;
-    overflow: hidden;
-    font-family: 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
-    background: black;
-  }
+  body { margin: 0; overflow: hidden; font-family: 'SF Pro Display', -apple-system, sans-serif; background: #000; color: white; }
+  
+  /* Camera Layer */
+  video { position: fixed; inset: 0; width: 100vw; height: 100vh; object-fit: cover; z-index: 1; }
 
-  video {
+  /* AR World Container - This holds the "pinned" food */
+  #ar-world {
     position: fixed;
     inset: 0;
-    width: 100vw;
-    height: 100vh;
-    object-fit: cover;
-    z-index: 1;
-  }
-
-  #dish {
-    position: fixed;
-    width: 260px;
-    max-width: 70vw;
-    left: 50%;
-    top: 50%;
-    transform: translate(-50%, -50%);
     z-index: 2;
     pointer-events: none;
-    transition: opacity 0.25s ease, transform 0.2s ease;
-    filter: drop-shadow(0 10px 20px rgba(0,0,0,0.5));
+    perspective: 1000px;
   }
 
+  .placed-dish {
+    position: absolute;
+    width: 200px;
+    transform-origin: center;
+    transition: opacity 0.5s ease;
+    filter: drop-shadow(0 20px 30px rgba(0,0,0,0.7));
+  }
+
+  /* Target Reticle (iPhone Measure Style) */
   #reticle {
     position: fixed;
-    width: 36px;
-    height: 36px;
-    border: 2px solid #00ffcc;
-    border-radius: 50%;
-    left: 50%;
-    top: 50%;
+    left: 50%; top: 50%;
     transform: translate(-50%, -50%);
-    z-index: 2;
-    pointer-events: none;
-    opacity: 0.85;
-    box-shadow: 0 0 10px #00ffcc;
-  }
-
-  #label {
-    position: fixed;
-    background: rgba(0,0,0,0.8);
-    color: #fff;
-    font-size: 13px;
-    padding: 8px 12px;
-    border-radius: 20px;
-    z-index: 2;
-    opacity: 0;
-    border: 1px solid rgba(255,255,255,0.2);
-    transition: opacity 0.3s ease;
-    white-space: nowrap;
-  }
-
-  #panel {
-    position: fixed;
-    bottom: 0;
-    width: 100%;
-    height: 45vh;
-    background: linear-gradient(to top, rgba(0,0,0,0.95), rgba(0,0,0,0.7));
-    padding: 10px 0 20px;
-    z-index: 3;
-    overflow-y: auto;
-    border-top: 1px solid rgba(255,255,255,0.1);
-  }
-
-  .section {
-    color: #ffb703;
-    font-weight: 800;
-    text-transform: uppercase;
-    letter-spacing: 1px;
-    font-size: 12px;
-    margin: 15px 16px 8px;
+    width: 40px; height: 40px;
+    border: 2px solid white;
+    border-radius: 50%;
+    z-index: 4;
     display: flex;
     align-items: center;
-    gap: 8px;
+    justify-content: center;
+  }
+  #reticle::after { content: ''; width: 4px; height: 4px; background: white; border-radius: 50%; }
+
+  /* UI Panel */
+  #ui-overlay {
+    position: fixed;
+    bottom: 0; width: 100%;
+    background: linear-gradient(to top, rgba(0,0,0,0.9) 80%, transparent);
+    z-index: 5;
+    padding-bottom: env(safe-area-inset-bottom);
   }
 
-  .carousel {
-    display: flex;
-    gap: 12px;
-    overflow-x: auto;
-    padding: 5px 16px;
-    scrollbar-width: none;
-  }
-
+  .carousel { display: flex; gap: 12px; overflow-x: auto; padding: 15px; scrollbar-width: none; }
   .carousel::-webkit-scrollbar { display: none; }
 
-  .item {
-    min-width: 110px;
-    background: rgba(255,255,255,0.08);
-    border: 1px solid rgba(255,255,255,0.1);
-    color: white;
-    border-radius: 12px;
-    padding: 12px 8px;
+  .food-card {
+    min-width: 100px; padding: 12px;
+    background: rgba(255,255,255,0.1);
+    backdrop-filter: blur(15px);
+    border-radius: 15px;
+    border: 1px solid rgba(255,255,255,0.2);
     text-align: center;
-    font-size: 13px;
-    cursor: pointer;
-    backdrop-filter: blur(10px);
-    transition: all 0.2s ease;
+    transition: transform 0.2s;
+  }
+  .food-card.selected { border-color: #00ffcc; background: rgba(0,255,204,0.1); }
+
+  .instructions {
+    text-align: center; font-size: 12px; color: #aaa;
+    margin-top: 10px; text-transform: uppercase; letter-spacing: 1px;
   }
 
-  .item:active {
-    transform: scale(0.95);
-    background: #ffb703;
-    color: black;
-  }
-
-  .title {
-    font-weight: 600;
+  #clear-btn {
+    position: fixed; top: 20px; right: 20px;
+    background: rgba(255,0,0,0.5); border: none; color: white;
+    padding: 8px 15px; border-radius: 20px; z-index: 6;
   }
 </style>
 </head>
-
 <body>
 
 <video id="camera" autoplay playsinline></video>
-<img id="dish" />
+<button id="clear-btn" onclick="clearDishes()">Clear All</button>
+
+<div id="ar-world"></div>
 <div id="reticle"></div>
-<div id="label"></div>
 
-<div id="panel">
-  <div class="section">🍛 Desi (South Asian)</div>
-  <div class="carousel">
-    <div class="item" onclick="showDish(biryani,'Large • serves 2')"><div class="title">Biryani</div></div>
-    <div class="item" onclick="showDish(butter,'Medium • serves 1')"><div class="title">Butter Chicken</div></div>
-    <div class="item" onclick="showDish(korma,'Medium • serves 1–2')"><div class="title">Korma</div></div>
-    <div class="item" onclick="showDish(curry,'Medium • serves 1')"><div class="title">Curry</div></div>
-    <div class="item" onclick="showDish(samosa,'2 pcs • Snack')"><div class="title">Samosas</div></div>
-    <div class="item" onclick="showDish(paneer,'Medium • serves 1')"><div class="title">Palak Paneer</div></div>
-  </div>
-
-  <div class="section">🍝 Italian (Halal)</div>
-  <div class="carousel">
-    <div class="item" onclick="showDish(pizza,'12 inch • serves 1–2')"><div class="title">Pizza</div></div>
-    <div class="item" onclick="showDish(lasagna,'Tray • serves 1')"><div class="title">Lasagna</div></div>
-    <div class="item" onclick="showDish(eggplant,'Plate • serves 1')"><div class="title">Eggplant Parm</div></div>
-    <div class="item" onclick="showDish(carbonara,'Halal Beef Bacon')"><div class="title">Carbonara</div></div>
-    <div class="item" onclick="showDish(risotto,'Veggie Stock')"><div class="title">Risotto</div></div>
-    <div class="item" onclick="showDish(gelato,'Dessert')"><div class="title">Gelato</div></div>
-  </div>
-
-  <div class="section">🌮 Mexican</div>
-  <div class="carousel">
-    <div class="item" onclick="showDish(taco,'3 pcs • serves 1')"><div class="title">Tacos</div></div>
-    <div class="item" onclick="showDish(burrito,'Large • serves 1')"><div class="title">Burrito</div></div>
-    <div class="item" onclick="showDish(quesadilla,'4 wedges')"><div class="title">Quesadilla</div></div>
-    <div class="item" onclick="showDish(enchilada,'3 pcs')"><div class="title">Enchiladas</div></div>
-    <div class="item" onclick="showDish(guac,'Side dip')"><div class="title">Guacamole</div></div>
-    <div class="item" onclick="showDish(chila,'Breakfast')"><div class="title">Chilaquiles</div></div>
-  </div>
-
-  <div class="section">🍔 American (Halal)</div>
-  <div class="carousel">
-    <div class="item" onclick="showDish(burger,'Beef Patty')"><div class="title">Cheeseburger</div></div>
-    <div class="item" onclick="showDish(wings,'6 pcs')"><div class="title">Buffalo Wings</div></div>
-    <div class="item" onclick="showDish(mac,'Cheesy')"><div class="title">Mac & Cheese</div></div>
-    <div class="item" onclick="showDish(brisket,'Smoked Beef')"><div class="title">BBQ Brisket</div></div>
-    <div class="item" onclick="showDish(philly,'Sliced Beef')"><div class="title">Philly Steak</div></div>
-    <div class="item" onclick="showDish(pie,'Dessert')"><div class="title">Apple Pie</div></div>
-  </div>
-
-  <div class="section">🥢 Chinese (Halal)</div>
-  <div class="carousel">
-    <div class="item" onclick="showDish(dimsum,'Assorted')"><div class="title">Dim Sum</div></div>
-    <div class="item" onclick="showDish(kungpao,'Spicy Chicken')"><div class="title">Kung Pao</div></div>
-    <div class="item" onclick="showDish(duck,'Roast Duck')"><div class="title">Peking Duck</div></div>
-    <div class="item" onclick="showDish(chowmein,'Noodles')"><div class="title">Chow Mein</div></div>
-    <div class="item" onclick="showDish(mapo,'Tofu & Beef')"><div class="title">Mapo Tofu</div></div>
-    <div class="item" onclick="showDish(spring,'3 pcs')"><div class="title">Spring Rolls</div></div>
-  </div>
-
-  <div class="section">🥐 French (Halal)</div>
-  <div class="carousel">
-    <div class="item" onclick="showDish(ratatouille,'Veggie Stew')"><div class="title">Ratatouille</div></div>
-    <div class="item" onclick="showDish(french_stew,'Chicken Broth')"><div class="title">Chicken Stew</div></div>
-    <div class="item" onclick="showDish(quiche,'Turkey Bacon')"><div class="title">Quiche</div></div>
-    <div class="item" onclick="showDish(croissant,'Buttery')"><div class="title">Croissants</div></div>
-    <div class="item" onclick="showDish(onion_soup,'Beef Broth')"><div class="title">Onion Soup</div></div>
-    <div class="item" onclick="showDish(steak,'Halal Steak')"><div class="title">Steak Frites</div></div>
-  </div>
-
-  <div class="section">🍣 Japanese</div>
-  <div class="carousel">
-    <div class="item" onclick="showDish(sushi,'Assorted Fish')"><div class="title">Sushi</div></div>
-    <div class="item" onclick="showDish(ramen,'Chicken Broth')"><div class="title">Ramen</div></div>
-    <div class="item" onclick="showDish(tempura,'Fried Shrimp')"><div class="title">Tempura</div></div>
-    <div class="item" onclick="showDish(gyoza,'Chicken Filling')"><div class="title">Gyoza</div></div>
-    <div class="item" onclick="showDish(tonkatsu,'Halal Chicken')"><div class="title">Tonkatsu</div></div>
-    <div class="item" onclick="showDish(yakitori,'Skewers')"><div class="title">Yakitori</div></div>
-  </div>
-
-  <div class="section">🥙 Middle Eastern</div>
-  <div class="carousel">
-    <div class="item" onclick="showDish(hummus,'Dip')"><div class="title">Hummus</div></div>
-    <div class="item" onclick="showDish(falafel,'6 pcs')"><div class="title">Falafel</div></div>
-    <div class="item" onclick="showDish(shawarma,'Beef/Chicken')"><div class="title">Shawarma</div></div>
-    <div class="item" onclick="showDish(kebab,'Grilled Meat')"><div class="title">Kebab</div></div>
-    <div class="item" onclick="showDish(baklava,'Sweet Honey')"><div class="title">Baklava</div></div>
-    <div class="item" onclick="showDish(tabbouleh,'Salad')"><div class="title">Tabbouleh</div></div>
-  </div>
+<div id="ui-overlay">
+  <div class="instructions">Point at a spot and tap the screen to place</div>
+  <div class="carousel" id="menu">
+    </div>
 </div>
 
 <script>
-/* CAMERA */
-navigator.mediaDevices.getUserMedia({
-  video: { facingMode: "environment" },
-  audio: false
-}).then(stream => camera.srcObject = stream);
+const menuData = [
+  { id: 'biryani', name: 'Biryani', img: 'https://media.istockphoto.com/id/501150349/photo/chicken-biryani-11.jpg?s=612x612&w=0&k=20&c=w6mDnUx8MnH3rnP9bR0VfWRwrODcbTz-6U07o3Zrs4o=' },
+  { id: 'pizza', name: 'Pizza', img: 'https://img.freepik.com/free-psd/delicious-pepperoni-pizza-culinary-delight_632498-24206.jpg?w=740' },
+  { id: 'taco', name: 'Tacos', img: 'https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcTD-CUOhD5WqTgJIVDIjg40XOWKg4cf0rc56w&s' },
+  { id: 'burger', name: 'Burger', img: 'https://images.unsplash.com/photo-1568901346375-23c9450c58cd?q=80&w=500' }
+];
 
-/* IMAGES */
-// Desi
-const biryani = "https://media.istockphoto.com/id/501150349/photo/chicken-biryani-11.jpg?s=612x612&w=0&k=20&c=w6mDnUx8MnH3rnP9bR0VfWRwrODcbTz-6U07o3Zrs4o=";
-const butter = "https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcQ9k3aQ9aF-SoTeZrZOdkv5FL9A_Pfw2ghUJQ&s";
-const korma = "https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcT0bXMJFe78VrtqCkakaMrEBLMZ1_TskQUf-g&s";
-const curry = "https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcT-CIrqsa-nvhsTN8oLuFwKCwhIiYNYmH0prA&s";
-const samosa = "https://images.unsplash.com/photo-1601050648497-3f908452e391?q=80&w=500";
-const paneer = "https://images.unsplash.com/photo-1546833999-b9f581a1996d?q=80&w=500";
+let selectedFood = menuData[0];
+const world = document.getElementById('ar-world');
+let rotationX = 0, rotationY = 0;
 
-// Italian
-const pizza = "https://img.freepik.com/free-psd/delicious-pepperoni-pizza-culinary-delight_632498-24206.jpg?semt=ais_hybrid&w=740&q=80";
-const lasagna = "https://static1.squarespace.com/static/5ed666a6924cd0017d343b01/5ee2713b64c4434a1fa0dbd3/5ef67886eb325278556737eb/1611460083464/bite-me-more-meet-lasagna.jpg?format=1500w";
-const eggplant = "https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcQ_fYH4NXNXRqtMQ43E70DIBgNdyE0KVKmVfw&s";
-const carbonara = "https://images.unsplash.com/photo-1612874742237-6526221588e3?q=80&w=500";
-const risotto = "https://images.unsplash.com/photo-1476124369491-e7addf5db371?q=80&w=500";
-const gelato = "https://images.unsplash.com/photo-1567206563064-6f60f40a2b57?q=80&w=500";
+// Setup Camera
+navigator.mediaDevices.getUserMedia({ video: { facingMode: "environment" } })
+  .then(stream => document.getElementById('camera').srcObject = stream);
 
-// Mexican
-const taco = "https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcTD-CUOhD5WqTgJIVDIjg40XOWKg4cf0rc56w&s";
-const burrito = "https://cdn.britannica.com/13/234013-050-73781543/rice-and-chorizo-burrito.jpg";
-const quesadilla = "https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcTvpPvofdQxIQNw5sIvkPwLZFE2_cMe_rcZGw&s";
-const enchilada = "https://images.unsplash.com/photo-1534352956239-0406bd582373?q=80&w=500";
-const guac = "https://images.unsplash.com/photo-1547058881-80bbbb2fcbf7?q=80&w=500";
-const chila = "https://images.unsplash.com/photo-1644243209805-4f3df9f68804?q=80&w=500";
+// Create Menu
+const menuContainer = document.getElementById('menu');
+menuData.forEach(food => {
+  const card = document.createElement('div');
+  card.className = `food-card ${food.id === selectedFood.id ? 'selected' : ''}`;
+  card.innerHTML = `<div style="font-size:20px">🍽️</div><div>${food.name}</div>`;
+  card.onclick = (e) => {
+    e.stopPropagation();
+    document.querySelectorAll('.food-card').forEach(c => c.classList.remove('selected'));
+    card.classList.add('selected');
+    selectedFood = food;
+  };
+  menuContainer.appendChild(card);
+});
 
-// American
-const burger = "https://images.unsplash.com/photo-1568901346375-23c9450c58cd?q=80&w=500";
-const wings = "https://images.unsplash.com/photo-1527477396000-e27163b481c2?q=80&w=500";
-const mac = "https://images.unsplash.com/photo-1543339308-43e59d6b73a6?q=80&w=500";
-const brisket = "https://images.unsplash.com/photo-1588347818036-558601350947?q=80&w=500";
-const philly = "https://images.unsplash.com/photo-1529193591184-b1d58069ecdd?q=80&w=500";
-const pie = "https://images.unsplash.com/photo-1568571780765-9276ac8b75a2?q=80&w=500";
-
-// Chinese
-const dimsum = "https://images.unsplash.com/photo-1496116218417-1a781b1c416c?q=80&w=500";
-const kungpao = "https://images.unsplash.com/photo-1525755662778-989d0524087e?q=80&w=500";
-const duck = "https://images.unsplash.com/photo-1512058564366-18510be2db19?q=80&w=500";
-const chowmein = "https://images.unsplash.com/photo-1585032226651-759b368d7246?q=80&w=500";
-const mapo = "https://images.unsplash.com/photo-1541696432-82c6da8ce7bf?q=80&w=500";
-const spring = "https://images.unsplash.com/photo-1606331132800-473d9ff020a8?q=80&w=500";
-
-// French
-const ratatouille = "https://images.unsplash.com/photo-1572453800999-e8d2d1589b7c?q=80&w=500";
-const french_stew = "https://images.unsplash.com/photo-1604908176997-125f25cc6f3d?q=80&w=500";
-const quiche = "https://images.unsplash.com/photo-1626078299034-9c8a9ed51740?q=80&w=500";
-const croissant = "https://images.unsplash.com/photo-1555507036-ab1f4038808a?q=80&w=500";
-const onion_soup = "https://images.unsplash.com/photo-1511910849309-0dffb8c85146?q=80&w=500";
-const steak = "https://images.unsplash.com/photo-1600891964092-4316c288032e?q=80&w=500";
-
-// Japanese
-const sushi = "https://images.unsplash.com/photo-1579871494447-9811cf80d66c?q=80&w=500";
-const ramen = "https://images.unsplash.com/photo-1557872245-741f4c666055?q=80&w=500";
-const tempura = "https://images.unsplash.com/photo-1615361413100-d1b410c5c761?q=80&w=500";
-const gyoza = "https://images.unsplash.com/photo-1541696497-3958a3554ad3?q=80&w=500";
-const tonkatsu = "https://images.unsplash.com/photo-1627974351651-7f8e815616e1?q=80&w=500";
-const yakitori = "https://images.unsplash.com/photo-1632768571442-999333939611?q=80&w=500";
-
-// Middle Eastern
-const hummus = "https://images.unsplash.com/photo-1577906030551-59758a512461?q=80&w=500";
-const falafel = "https://images.unsplash.com/photo-1593001874117-c99c5ed9918a?q=80&w=500";
-const shawarma = "https://images.unsplash.com/photo-1561651823-34feb02250e4?q=80&w=500";
-const kebab = "https://images.unsplash.com/photo-1603360946369-dc9bb0a5810f?q=80&w=500";
-const baklava = "https://images.unsplash.com/photo-1519676867240-f03562e64548?q=80&w=500";
-const tabbouleh = "https://images.unsplash.com/photo-1540420773420-3366772f4999?q=80&w=500";
-
-/* STICKY STATE */
-let locked = true;
-let anchorX = 50, anchorY = 50;
-let liveX = 50, liveY = 50;
-
-/* SHOW DISH */
-function showDish(src, text) {
-  dish.style.opacity = "0";
-  setTimeout(() => {
-    dish.src = src;
-    dish.style.opacity = "1";
-    label.textContent = text;
-    label.style.opacity = "1";
-  }, 150);
-}
-
-/* TAP TO LOCK */
-window.addEventListener("click", (e) => {
-  // Don't lock if clicking the panel
-  if (e.target.closest('#panel')) return;
+// Device Motion Logic (The "iPhone Measure" feel)
+window.addEventListener('deviceorientation', (e) => {
+  // We use the gamma (left/right) and beta (front/back) to move the world container
+  // effectively keeping the "placed" items in the same spot in the room.
+  rotationX = e.beta; 
+  rotationY = e.gamma;
   
-  if (!locked) {
-    locked = true;
-    anchorX = liveX;
-    anchorY = liveY;
-    reticle.style.display = "none";
-  } else {
-    locked = false;
-    reticle.style.display = "block";
-  }
+  // Apply the inverse rotation to the world so items stay "fixed" in space
+  world.style.transform = `rotateX(${-rotationX}deg) rotateY(${-rotationY}deg)`;
 });
 
-/* MEASURE-LIKE MOTION */
-window.addEventListener("deviceorientation", e => {
-  if (locked) return;
-  const x = e.gamma || 0;
-  const y = e.beta || 0;
-  liveX = 50 + x * 0.4; // Increased sensitivity slightly for better feel
-  liveY = 50 + y * 0.4;
+// Place Dish Logic
+window.addEventListener('click', (e) => {
+  if (e.target.closest('#ui-overlay') || e.target.id === 'clear-btn') return;
+
+  const newDish = document.createElement('img');
+  newDish.src = selectedFood.img;
+  newDish.className = 'placed-dish';
+  
+  // Calculate "World" position
+  // We place it in the center, but adjusted by the current phone tilt 
+  // so it stays where you were looking.
+  const xPos = window.innerWidth / 2 - 100;
+  const yPos = window.innerHeight / 2 - 100;
+  
+  newDish.style.left = `${xPos}px`;
+  newDish.style.top = `${yPos}px`;
+  
+  // Give it a random slight rotation so multiple dishes don't look identical
+  const randomRot = Math.random() * 20 - 10;
+  newDish.style.transform = `translateZ(-500px) rotate(${randomRot}deg)`;
+
+  world.appendChild(newDish);
 });
 
-/* APPLY POSITION */
-setInterval(() => {
-  const x = locked ? anchorX : liveX;
-  const y = locked ? anchorY : liveY;
-  dish.style.left = x + "%";
-  dish.style.top = y + "%";
-  label.style.left = (x + 2) + "%";
-  label.style.top = (y + 6) + "%";
-}, 16);
+function clearDishes() {
+  world.innerHTML = '';
+}
 </script>
-
 </body>
 </html>
