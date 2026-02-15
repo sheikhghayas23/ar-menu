@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no"/>
-<title>Pro Spatial AR Menu</title>
+<title>Pro Spatial AR Menu - Fixed Anchor</title>
 
 <style>
   :root { 
@@ -22,21 +22,27 @@
   
   video { position: fixed; inset: 0; width: 100vw; height: 100vh; object-fit: cover; z-index: 1; }
 
-  /* 3D Stage */
-  #viewport { position: fixed; inset: 0; z-index: 2; perspective: 1000px; pointer-events: none; }
+  /* 3D Stage Overhaul */
+  #viewport { 
+    position: fixed; 
+    inset: 0; 
+    z-index: 2; 
+    perspective: 1000px; /* Lower perspective increases the 3D depth effect */
+    pointer-events: none; 
+  }
+
   #world { 
     position: absolute; 
     width: 100%; 
     height: 100%; 
     transform-style: preserve-3d; 
-    transition: transform 0.1s linear;
+    transition: transform 0.05s linear; /* Smooths out the jitter */
   }
 
   .spatial-node {
     position: absolute; left: 50%; top: 50%;
     transform-style: preserve-3d;
     display: flex; flex-direction: column; align-items: center;
-    pointer-events: auto;
   }
 
   .food-img {
@@ -44,12 +50,25 @@
     border-radius: 50%; border: 6px solid rgba(255,255,255,0.2);
     filter: drop-shadow(0 25px 50px rgba(0,0,0,0.8));
     animation: dropIn 0.5s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+    z-index: 2;
+  }
+
+  /* Added Shadow for "Stuck to Table" effect */
+  .shadow {
+    position: absolute;
+    width: 200px; height: 200px;
+    background: rgba(0,0,0,0.6);
+    border-radius: 50%;
+    filter: blur(20px);
+    transform: translateY(120px) rotateX(90deg);
+    z-index: 1;
   }
 
   .label-3d {
     background: var(--glass); padding: 4px 12px; border-radius: 20px;
     font-size: 12px; font-weight: 600; margin-top: 10px;
     border: 1px solid rgba(255,255,255,0.2);
+    transform: translateZ(20px);
   }
 
   @keyframes dropIn {
@@ -122,7 +141,7 @@
 </div>
 
 <script>
-// --- YOUR ORIGINAL DATA ---
+// --- MENU DATA ---
 const categories = [
   { name: "Desi", icon: "🍛", items: [
       { name: 'Biryani', img: 'https://media.istockphoto.com/id/501150349/photo/chicken-biryani-11.jpg?s=612x612&w=0&k=20&c=w6mDnUx8MnH3rnP9bR0VfWRwrODcbTz-6U07o3Zrs4o=' },
@@ -155,51 +174,21 @@ const categories = [
       { name: 'BBQ Brisket', img: 'https://images.unsplash.com/photo-1588347818036-558601350947?w=500' },
       { name: 'Philly Steak', img: 'https://images.unsplash.com/photo-1529193591184-b1d58069ecdd?w=500' },
       { name: 'Apple Pie', img: 'https://images.unsplash.com/photo-1568571780765-9276ac8b75a2?w=500' }
-  ]},
-  { name: "Chinese", icon: "🥢", items: [
-      { name: 'Dim Sum', img: 'https://images.unsplash.com/photo-1496116218417-1a781b1c416c?w=500' },
-      { name: 'Kung Pao', img: 'https://images.unsplash.com/photo-1525755662778-989d0524087e?w=500' },
-      { name: 'Peking Duck', img: 'https://images.unsplash.com/photo-1512058564366-18510be2db19?w=500' },
-      { name: 'Chow Mein', img: 'https://images.unsplash.com/photo-1585032226651-759b368d7246?w=500' },
-      { name: 'Mapo Tofu', img: 'https://images.unsplash.com/photo-1541696432-82c6da8ce7bf?w=500' },
-      { name: 'Spring Rolls', img: 'https://images.unsplash.com/photo-1606331132800-473d9ff020a8?w=500' }
-  ]},
-  { name: "French", icon: "🥐", items: [
-      { name: 'Ratatouille', img: 'https://images.unsplash.com/photo-1572453800999-e8d2d1589b7c?w=500' },
-      { name: 'Braised Stew', img: 'https://images.unsplash.com/photo-1604908176997-125f25cc6f3d?w=500' },
-      { name: 'Quiche', img: 'https://images.unsplash.com/photo-1626078299034-9c8a9ed51740?w=500' },
-      { name: 'Croissants', img: 'https://images.unsplash.com/photo-1555507036-ab1f4038808a?w=500' },
-      { name: 'Onion Soup', img: 'https://images.unsplash.com/photo-1511910849309-0dffb8c85146?w=500' },
-      { name: 'Steak Frites', img: 'https://images.unsplash.com/photo-1600891964092-4316c288032e?w=500' }
-  ]},
-  { name: "Japanese", icon: "🍣", items: [
-      { name: 'Sushi', img: 'https://images.unsplash.com/photo-1579871494447-9811cf80d66c?w=500' },
-      { name: 'Ramen', img: 'https://images.unsplash.com/photo-1557872245-741f4c666055?w=500' },
-      { name: 'Tempura', img: 'https://images.unsplash.com/photo-1615361413100-d1b410c5c761?w=500' },
-      { name: 'Gyoza', img: 'https://images.unsplash.com/photo-1541696497-3958a3554ad3?w=500' },
-      { name: 'Tonkatsu', img: 'https://images.unsplash.com/photo-1627974351651-7f8e815616e1?w=500' },
-      { name: 'Yakitori', img: 'https://images.unsplash.com/photo-1632768571442-999333939611?w=500' }
-  ]},
-  { name: "Middle Eastern", icon: "🥙", items: [
-      { name: 'Hummus', img: 'https://images.unsplash.com/photo-1577906030551-59758a512461?w=500' },
-      { name: 'Falafel', img: 'https://images.unsplash.com/photo-1593001874117-c99c5ed9918a?w=500' },
-      { name: 'Shawarma', img: 'https://images.unsplash.com/photo-1561651823-34feb02250e4?w=500' },
-      { name: 'Kebab', img: 'https://images.unsplash.com/photo-1603360946369-dc9bb0a5810f?w=500' },
-      { name: 'Baklava', img: 'https://images.unsplash.com/photo-1519676867240-f03562e64548?w=500' },
-      { name: 'Tabbouleh', img: 'https://images.unsplash.com/photo-1540420773420-3366772f4999?w=500' }
   ]}
 ];
 
-// --- LOGIC UPDATED FOR "MEASURE APP" LOCKING ---
+// --- CORE LOGIC ---
 let currentCategory = categories[0];
 let selectedItem = currentCategory.items[0];
 let curA = 0, curB = 0;
-let initialA = null; // Stores the "First Point" anchor
+let anchorA = null; // The "North" of your AR world
 const world = document.getElementById('world');
 
+// 1. Camera Init
 navigator.mediaDevices.getUserMedia({ video: { facingMode: "environment" } })
   .then(s => document.getElementById('camera').srcObject = s);
 
+// 2. UI Builders
 buildCategories();
 buildMenu();
 
@@ -234,44 +223,49 @@ function buildMenu() {
     };
     menu.appendChild(c);
   });
-  selectedItem = currentCategory.items[0];
 }
 
+// 3. THE SPATIAL LOCK ENGINE
 window.addEventListener('deviceorientation', (e) => {
-  // We use Alpha (compass) and Beta (tilt)
-  curA = e.alpha || 0;
-  curB = e.beta || 0;
-  
-  // Set initial anchor on first movement so the world doesn't jump
-  if (initialA === null && curA !== 0) initialA = curA;
+  curA = e.alpha || 0; // Horizontal turn
+  curB = e.beta || 0;  // Tilt up/down
 
-  // LOCKING LOGIC: We rotate the world in the opposite direction of the phone
-  // This makes the 3D items stay "stuck" in global space
-  const rotateZ = initialA ? -(curA - initialA) : -curA;
-  world.style.transform = `rotateX(${curB - 90}deg) rotateZ(${rotateZ}deg)`;
+  // Set the Anchor when the user first points the phone
+  if (anchorA === null && curA !== 0) {
+    anchorA = curA;
+  }
+
+  // Calculate rotation relative to our starting anchor
+  const relativeAlpha = anchorA !== null ? (curA - anchorA) : 0;
+
+  // Transform the entire 3D world in reverse of phone movement
+  // This makes objects stay stuck in the room.
+  world.style.transform = `rotateX(${curB - 90}deg) rotateZ(${-relativeAlpha}deg)`;
 });
 
+// 4. POINT-TO-POINT PLACEMENT
 window.addEventListener('click', (e) => {
+  // Don't place food if clicking UI buttons
   if (e.target.closest('#ui') || e.target.id === 'reset-btn') return;
-
-  // The "Dish" will appear exactly where the reticle is pointing
-  // We use 900px as the standard "Table Distance"
-  const distance = 900;
 
   const node = document.createElement('div');
   node.className = 'spatial-node';
-  
-  // POSITION CALCULATION:
-  // We offset the rotation so the item stays exactly at the compass degree where it was dropped
-  const dropA = curA - (initialA || 0);
-  const dropB = curB - 90;
+
+  // Lock this specific dish to the current room coordinates
+  const dropAlpha = anchorA !== null ? (curA - anchorA) : 0;
+  const dropBeta = curB - 90;
+  const tableDistance = 900; // Adjust this to push food further away or closer
 
   node.style.transform = `
-    rotateZ(${dropA}deg) 
-    rotateX(${-dropB}deg) 
-    translateZ(${distance}px)
+    rotateZ(${dropAlpha}deg) 
+    rotateX(${-dropBeta}deg) 
+    translateZ(${tableDistance}px)
     rotateX(90deg)
   `;
+
+  // Create Food and Shadow
+  const shadow = document.createElement('div');
+  shadow.className = 'shadow';
 
   const img = document.createElement('img');
   img.src = selectedItem.img;
@@ -281,6 +275,7 @@ window.addEventListener('click', (e) => {
   label.className = 'label-3d';
   label.textContent = selectedItem.name;
 
+  node.appendChild(shadow);
   node.appendChild(img);
   node.appendChild(label);
   world.appendChild(node);
@@ -290,7 +285,7 @@ window.addEventListener('click', (e) => {
 
 function clearAll() {
   world.innerHTML = '';
-  initialA = null; // Resets the anchor for a new table setup
+  anchorA = null; // Resets the world anchor for a new table
 }
 </script>
 </body>
